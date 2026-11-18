@@ -21,9 +21,11 @@ jobs:
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
           git fetch --force origin "refs/tags/$GITHUB_REF_NAME:refs/tags/$GITHUB_REF_NAME"
       - run: cargo test --locked
-      - run: cargo build --release --locked
+      - run: make build
       - name: Package
-        run: tar -czf "downmark-$GITHUB_REF_NAME-x86_64.tar.gz" -C target/release downmark -C "$GITHUB_WORKSPACE" LICENSE README.md
+        run: |
+          make install DESTDIR="$PWD/dist" PREFIX=/usr
+          tar -czf "downmark-$GITHUB_REF_NAME-x86_64.tar.gz" -C dist usr
       - name: Write release notes
         run: |
           prev=$(git describe --tags --abbrev=0 "$GITHUB_REF_NAME^" 2>/dev/null || true)
