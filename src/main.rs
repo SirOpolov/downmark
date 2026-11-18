@@ -1,3 +1,4 @@
+mod prefs;
 mod render;
 mod settings;
 mod window;

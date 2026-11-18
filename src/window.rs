@@ -74,6 +74,7 @@ impl Doc {
         let title = adw::WindowTitle::new("", "");
         let header = adw::HeaderBar::new();
         header.set_title_widget(Some(&title));
+        header.pack_end(&gtk::MenuButton::builder().icon_name("open-menu-symbolic").menu_model(&main_menu()).primary(true).build());
         header.pack_end(&modes);
 
         let toasts = adw::ToastOverlay::new();
@@ -127,6 +128,7 @@ impl Doc {
             doc.modes.set_active_name(param.and_then(|p| p.str()));
         });
         self.action("open", None, |doc, _| doc.choose_file_to_open());
+        self.action("settings", None, |doc, _| crate::prefs::show(&doc.window, &doc.settings));
         self.action("save", None, |doc, _| doc.save(|_| {}));
         self.action("save-as", None, |doc, _| doc.save_as(|_| {}));
         self.action("new", None, |doc, _| {
@@ -356,6 +358,24 @@ impl Doc {
             }
         }
     }
+}
+
+fn main_menu() -> gio::Menu {
+    let files = gio::Menu::new();
+    files.append(Some("New Window"), Some("win.new"));
+    files.append(Some("Open…"), Some("win.open"));
+    files.append(Some("Save"), Some("win.save"));
+    files.append(Some("Save As…"), Some("win.save-as"));
+    let export = gio::Menu::new();
+    export.append(Some("Export as PDF…"), Some("win.export-pdf"));
+    export.append(Some("Export as PNG…"), Some("win.export-png"));
+    let app = gio::Menu::new();
+    app.append(Some("Settings"), Some("win.settings"));
+    let menu = gio::Menu::new();
+    menu.append_section(None, &files);
+    menu.append_section(None, &export);
+    menu.append_section(None, &app);
+    menu
 }
 
 fn markdown_filter() -> gtk::FileFilter {
