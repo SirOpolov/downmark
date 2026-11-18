@@ -247,7 +247,10 @@ impl Doc {
             return false;
         }
         decision.ignore();
-        if is_launchable(&uri) {
+        if let Some(text) = render::copied_text(&uri) {
+            self.window.clipboard().set_text(&text);
+            self.toasts.add_toast(adw::Toast::builder().title("Copied").timeout(1).build());
+        } else if is_launchable(&uri) {
             gtk::UriLauncher::new(&uri).launch(Some(&self.window), None::<&gio::Cancellable>, |_| {});
         }
         true

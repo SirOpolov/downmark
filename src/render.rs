@@ -1,12 +1,37 @@
-use pulldown_cmark::{Options, Parser, html};
+use gtk::glib;
+use pulldown_cmark::{Event, Options, Parser, Tag, TagEnd, html};
+
+const COPY: &str = "downmark-copy:";
 
 pub fn to_html(markdown: &str) -> String {
     let options = Options::ENABLE_TABLES
         | Options::ENABLE_TASKLISTS
         | Options::ENABLE_STRIKETHROUGH
         | Options::ENABLE_FOOTNOTES;
+    let mut events = Vec::new();
+    let mut code: Option<String> = None;
+    for event in Parser::new_ext(markdown, options) {
+        match &event {
+            Event::Start(Tag::CodeBlock(_)) => {
+                code = Some(String::new());
+                events.push(Event::Html("<div class=\"code\">".into()));
+            }
+            Event::Text(text) => {
+                if let Some(code) = &mut code {
+                    code.push_str(text);
+                }
+            }
+            _ => {}
+        }
+        let end = matches!(event, Event::End(TagEnd::CodeBlock));
+        events.push(event);
+        if end && let Some(text) = code.take() {
+            let href = glib::Uri::escape_string(&text, None, false);
+            events.push(Event::Html(format!("<a class=\"copy\" href=\"{COPY}{href}\">Copy</a></div>").into()));
+        }
+    }
     let mut out = String::with_capacity(markdown.len() * 3 / 2);
-    html::push_html(&mut out, Parser::new_ext(markdown, options));
+    html::push_html(&mut out, events.into_iter());
     out
 }
 
@@ -23,7 +48,11 @@ blockquote { margin: 0; padding-left: 1em; border-left: 4px solid rgba(127,127,1
 img { max-width: 100%; }
 .footnote-definition { font-size: .9em; margin-top: 1em; }
 .footnote-definition p { display: inline; }
-@media print { :root { color-scheme: light; } }
+.code { position: relative; margin: 1em 0; }
+.code > pre { margin: 0; }
+.copy { position: absolute; top: 6px; right: 6px; padding: 2px 8px; font: 12px sans-serif; border-radius: 4px; background: rgba(127,127,127,.25); color: inherit; text-decoration: none; opacity: 0; }
+.code:hover .copy { opacity: 1; }
+@media print { :root { color-scheme: light; } .copy { display: none; } }
 a { color: #3584e4; }
 ";
 
@@ -37,13 +66,40 @@ pub fn page(body: &str) -> String {
     )
 }
 
+pub fn copied_text(uri: &str) -> Option<String> {
+    let text = uri.strip_prefix(COPY)?;
+    glib::Uri::unescape_string(text, None::<&str>).map(Into::into)
+}
+
 pub fn update_script(body: &str) -> String {
     format!("document.body.innerHTML = {};", serde_json::Value::from(body))
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{page, to_html, update_script};
+    use super::{copied_text, page, to_html, update_script};
+
+    #[test]
+    fn code_block_gets_copy_link_with_its_text() {
+        let html = to_html("```rust\nlet a = \"x\" & 1;\n```");
+        assert!(html.starts_with(r#"<div class="code">"#));
+        assert!(html.contains(r#"<pre><code class="language-rust">"#));
+        assert!(html.contains(r#"<a class="copy" href="downmark-copy:let%20a%20%3D%20%22x%22%20%26%201%3B%0A">Copy</a></div>"#));
+    }
+
+    #[test]
+    fn copy_link_decodes_back_to_the_code() {
+        let code = "if a < b && c != \"d\" {\n\tprintln!(\"ü %20\");\n}\n";
+        let html = to_html(&format!("```\n{code}```"));
+        let href = html.split("href=\"").nth(1).unwrap().split('"').next().unwrap();
+        assert_eq!(copied_text(href).as_deref(), Some(code));
+    }
+
+    #[test]
+    fn other_links_are_not_copy_links() {
+        assert_eq!(copied_text("https://example.com"), None);
+    }
+
 
     #[test]
     fn renders_heading() {
@@ -95,7 +151,11 @@ mod tests {
 
     #[test]
     fn page_prints_in_light_colors() {
-        assert!(page("").contains("@media print { :root { color-scheme: light; } }"));
+        assert!(page("").contains(".code { position: relative; margin: 1em 0; }
+.code > pre { margin: 0; }
+.copy { position: absolute; top: 6px; right: 6px; padding: 2px 8px; font: 12px sans-serif; border-radius: 4px; background: rgba(127,127,127,.25); color: inherit; text-decoration: none; opacity: 0; }
+.code:hover .copy { opacity: 1; }
+@media print { :root { color-scheme: light; } .copy { display: none; } }"));
     }
 
     #[test]
