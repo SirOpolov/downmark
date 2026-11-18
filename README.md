@@ -85,7 +85,9 @@ make && sudo make install
 
 ## Support
 
-downmark is free and stays free. Buy me a coffee:
+downmark is free and stays free. 
+
+Buy me a coffee:
 
 <p align="center">
   <a href="https://pay.msero.de"><img src="https://img.shields.io/badge/Donate-PayPal-111111?style=for-the-badge&logo=paypal&logoColor=white" alt="Donate with PayPal"></a>
