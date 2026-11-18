@@ -1,6 +1,6 @@
 pkgbase = downmark
 	pkgdesc = Lightweight Markdown editor with live preview
-	pkgver = 0.1.0
+	pkgver = 0.1.1
 	pkgrel = 1
 	url = https://github.com/GreisMicha/downmark
 	arch = x86_64
@@ -13,7 +13,7 @@ pkgbase = downmark
 	depends = glib2
 	depends = gcc-libs
 	depends = glibc
-	source = downmark-0.1.0.tar.gz::https://github.com/GreisMicha/downmark/archive/refs/tags/v0.1.0.tar.gz
-	sha256sums = 382a60fb3a2e747a82886c85e3f6f95b4b86ea65b84e6b8eb3484c933b7b0b05
+	source = downmark-0.1.1.tar.gz::https://github.com/GreisMicha/downmark/archive/refs/tags/v0.1.1.tar.gz
+	sha256sums = 3ab0143292b73edd154c175834a3ada73fee2441c05411e76cac5af6134958a0
 
 pkgname = downmark
