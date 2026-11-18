@@ -2,6 +2,7 @@
 name = "downmark"
 version = "0.1.0"
 edition = "2024"
+rust-version = "1.92"
 description = "Lightweight Markdown editor with live preview"
 license = "MIT"
 repository = "https://github.com/GreisMicha/downmark"
