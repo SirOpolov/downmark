@@ -1,0 +1,44 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    container: archlinux:latest
+    steps:
+      - run: pacman -Syu --noconfirm --needed base-devel git github-cli rust gtk4 libadwaita gtksourceview5 webkitgtk-6.0
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Restore annotated tag
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          git fetch --force origin "refs/tags/$GITHUB_REF_NAME:refs/tags/$GITHUB_REF_NAME"
+      - run: cargo test --locked
+      - run: cargo build --release --locked
+      - name: Package
+        run: tar -czf "downmark-$GITHUB_REF_NAME-x86_64.tar.gz" -C target/release downmark -C "$GITHUB_WORKSPACE" LICENSE README.md
+      - name: Write release notes
+        run: |
+          prev=$(git describe --tags --abbrev=0 "$GITHUB_REF_NAME^" 2>/dev/null || true)
+          {
+            git tag -l --format='%(contents)' "$GITHUB_REF_NAME"
+            echo "## Changes"
+            echo
+            git log --no-merges --pretty='- %s (%h)' "${prev:+$prev..}$GITHUB_REF_NAME"
+            if [ -n "$prev" ]; then
+              echo
+              echo "**Full diff:** https://github.com/$GITHUB_REPOSITORY/compare/$prev...$GITHUB_REF_NAME"
+            fi
+          } > notes.md
+          cat notes.md
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes-file notes.md downmark-*.tar.gz
