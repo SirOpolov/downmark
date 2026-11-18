@@ -200,7 +200,7 @@ impl Doc {
         let title = title(self.file_name().as_deref(), self.buffer.is_modified());
         let dir = self.file.borrow().as_ref().and_then(|f| f.parent()).and_then(|p| p.path());
         self.title.set_title(&title);
-        self.title.set_subtitle(&dir.map(|d| d.display().to_string()).unwrap_or_default());
+        self.title.set_subtitle(&dir.map(|d| display_dir(&d, &glib::home_dir())).unwrap_or_default());
         self.window.set_title(Some(&title));
     }
 
@@ -475,6 +475,14 @@ pub fn export_name(name: Option<&str>, ext: &str) -> String {
     format!("{stem}.{ext}")
 }
 
+pub fn display_dir(dir: &std::path::Path, home: &std::path::Path) -> String {
+    match dir.strip_prefix(home) {
+        Ok(rest) if rest.as_os_str().is_empty() => "~".to_string(),
+        Ok(rest) => format!("~/{}", rest.display()),
+        Err(_) => dir.display().to_string(),
+    }
+}
+
 pub fn title(name: Option<&str>, modified: bool) -> String {
     let name = name.unwrap_or("Untitled");
     if modified { format!("• {name}") } else { name.to_string() }
@@ -524,6 +532,15 @@ mod tests {
     fn export_name_without_file() {
         assert_eq!(export_name(None, "pdf"), "Untitled.pdf");
         assert_eq!(export_name(Some("NOTES"), "png"), "NOTES.png");
+    }
+
+    #[test]
+    fn display_dir_shortens_home() {
+        let home = std::path::Path::new("/home/user");
+        assert_eq!(display_dir(std::path::Path::new("/home/user/notes"), home), "~/notes");
+        assert_eq!(display_dir(std::path::Path::new("/home/user"), home), "~");
+        assert_eq!(display_dir(std::path::Path::new("/home/username"), home), "/home/username");
+        assert_eq!(display_dir(std::path::Path::new("/etc"), home), "/etc");
     }
 
     #[test]

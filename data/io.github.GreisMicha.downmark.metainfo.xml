@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.GreisMicha.downmark</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <name>downmark</name>
+  <summary>Lightweight Markdown editor with live preview</summary>
+  <developer id="io.github.greismicha">
+    <name>Micha</name>
+  </developer>
+  <description>
+    <p>downmark is a fast Markdown editor with a live preview, built with GTK 4 and libadwaita.</p>
+    <ul>
+      <li>Editor, split and preview modes</li>
+      <li>GitHub flavored Markdown: tables, task lists, footnotes, strikethrough</li>
+      <li>Export the rendered document as PDF or PNG</li>
+      <li>Light, dark or system theme</li>
+      <li>Rebindable keyboard shortcuts</li>
+    </ul>
+  </description>
+  <launchable type="desktop-id">io.github.GreisMicha.downmark.desktop</launchable>
+  <url type="homepage">https://github.com/GreisMicha/downmark</url>
+  <url type="bugtracker">https://github.com/GreisMicha/downmark/issues</url>
+  <screenshots>
+    <screenshot type="default">
+      <image>https://raw.githubusercontent.com/GreisMicha/downmark/main/data/screenshot.png</image>
+      <caption>Split view with live preview</caption>
+    </screenshot>
+  </screenshots>
+  <content_rating type="oars-1.1"/>
+  <provides>
+    <binary>downmark</binary>
+  </provides>
+  <releases>
+    <release version="0.1.0" date="2026-11-18">
+      <description>
+        <p>First release.</p>
+      </description>
+    </release>
+  </releases>
+</component>
