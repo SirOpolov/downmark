@@ -5,7 +5,7 @@
 <h1 align="center">downmark</h1>
 
 <p align="center">
-  <em>Write Markdown on the left. See it on the right. That's it.</em>
+  <em>Edit large Markdown file without lags.</em>
 </p>
 
 <p align="center">
