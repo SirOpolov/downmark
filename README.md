@@ -5,7 +5,7 @@
 <h1 align="center">downmark</h1>
 
 <p align="center">
-  <em>Edit large Markdown file without lags.</em>
+  <em>Edit large Markdown files without lags.</em>
 </p>
 
 <p align="center">
@@ -27,8 +27,8 @@
 
 A lightweight Markdown editor with a split view, made for Linux. No accounts, no cloud, no plugins. Open a file, type, save.
 
-- **Just works.** Opens from your app grid or "Open With…". Set it as the default for `.md` files and forget about it.
-- **Fast.** Written in Rust. Renders a 1 MB document in ~20 ms, the preview updates while you type.
+- **Just works.** Set it as the default for `.md` files and forget about it.
+- **Fast.** Renders a 1 MB document in ~20 ms, the preview updates while you type.
 - **Three views.** Editor, Split, Preview — one click or `Ctrl+1` `Ctrl+2` `Ctrl+3`.
 - **Export.** Save the rendered document as PDF (selectable text) or PNG.
 - **GitHub flavored.** Tables, task lists, footnotes, strikethrough, fenced code.
@@ -44,7 +44,7 @@ git clone https://github.com/GreisMicha/downmark.git
 cd downmark/packaging && makepkg -si
 ```
 
-AUR package coming soon.
+AUR registration is still unavailable 18.11.2026
 
 ### Other distributions
 
@@ -101,7 +101,7 @@ Installing into `~/.local` (`make install PREFIX=~/.local`) is for development o
 
 ## Support
 
-downmark is free and stays free. If it saves you time, you can buy me a coffee:
+downmark is free and stays free. Buy me a coffee:
 
 <p align="center">
   <a href="https://pay.msero.de"><img src="https://img.shields.io/badge/Donate-PayPal-111111?style=for-the-badge&logo=paypal&logoColor=white" alt="Donate with PayPal"></a>
