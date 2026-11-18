@@ -1,0 +1,36 @@
+# Maintainer: Micha <https://github.com/GreisMicha>
+pkgname=downmark
+pkgver=0.1.0
+pkgrel=1
+pkgdesc='Lightweight Markdown editor with live preview'
+arch=('x86_64')
+url='https://github.com/GreisMicha/downmark'
+license=('MIT')
+depends=('gtk4' 'libadwaita' 'gtksourceview5' 'webkitgtk-6.0' 'glib2' 'gcc-libs' 'glibc')
+makedepends=('cargo')
+source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
+sha256sums=('382a60fb3a2e747a82886c85e3f6f95b4b86ea65b84e6b8eb3484c933b7b0b05')
+
+prepare() {
+  cd "$pkgname-$pkgver"
+  export RUSTUP_TOOLCHAIN=stable
+  cargo fetch --locked --target "$(rustc -vV | sed -n 's/host: //p')"
+}
+
+build() {
+  cd "$pkgname-$pkgver"
+  export RUSTUP_TOOLCHAIN=stable
+  export CARGO_TARGET_DIR=target
+  cargo build --frozen --release
+}
+
+check() {
+  cd "$pkgname-$pkgver"
+  export RUSTUP_TOOLCHAIN=stable
+  cargo test --frozen
+}
+
+package() {
+  cd "$pkgname-$pkgver"
+  make install DESTDIR="$pkgdir" PREFIX=/usr
+}

@@ -16,10 +16,14 @@ A lightweight Markdown editor and renderer with split view, built for Linux with
 
 ## Install
 
-### Arch Linux (AUR)
+### Arch Linux
+
+The AUR package is on its way. Until then, build it with the included PKGBUILD:
 
 ```sh
-yay -S downmark
+git clone https://github.com/GreisMicha/downmark.git
+cd downmark/packaging
+makepkg -si
 ```
 
 ### From source
