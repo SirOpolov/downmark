@@ -124,6 +124,13 @@ impl Doc {
             doc.modes.set_active_name(param.and_then(|p| p.str()));
         });
         self.action("open", None, |doc, _| doc.choose_file_to_open());
+        self.action("save", None, |doc, _| doc.save(|_| {}));
+        self.action("save-as", None, |doc, _| doc.save_as(|_| {}));
+        self.action("new", None, |doc, _| {
+            if let Some(app) = doc.window.application().and_downcast::<adw::Application>() {
+                Doc::new(&app).present();
+            }
+        });
 
         let weak = Rc::downgrade(self);
         self.buffer.connect_changed(move |_| {
@@ -140,6 +147,13 @@ impl Doc {
 
         let keep_alive = RefCell::new(Some(self.clone()));
         self.window.connect_close_request(move |_| {
+            let Some(doc) = keep_alive.borrow().clone() else {
+                return glib::Propagation::Proceed;
+            };
+            if doc.buffer.is_modified() {
+                doc.confirm_close();
+                return glib::Propagation::Stop;
+            }
             keep_alive.take();
             glib::Propagation::Proceed
         });
@@ -214,6 +228,73 @@ impl Doc {
         });
     }
 
+    fn save(self: &Rc<Self>, after: fn(&Rc<Self>)) {
+        let file = self.file.borrow().clone();
+        match file {
+            Some(file) => {
+                if self.write_to(&file) {
+                    after(self);
+                }
+            }
+            None => self.save_as(after),
+        }
+    }
+
+    fn save_as(self: &Rc<Self>, after: fn(&Rc<Self>)) {
+        let dialog = gtk::FileDialog::builder()
+            .title("Save As")
+            .initial_name(self.file_name().unwrap_or_else(|| "Untitled.md".into()))
+            .default_filter(&markdown_filter())
+            .build();
+        if let Some(dir) = self.file.borrow().as_ref().and_then(|f| f.parent()) {
+            dialog.set_initial_folder(Some(&dir));
+        }
+        let weak = Rc::downgrade(self);
+        dialog.save(Some(&self.window), None::<&gio::Cancellable>, move |result| {
+            if let (Some(doc), Ok(file)) = (weak.upgrade(), result)
+                && doc.write_to(&file)
+            {
+                after(&doc);
+            }
+        });
+    }
+
+    fn write_to(&self, file: &gio::File) -> bool {
+        if let Err(err) = write_text(file, &self.text()) {
+            self.toast(&format!("Could not save: {}", err.message()));
+            return false;
+        }
+        let old_dir = self.file.replace(Some(file.clone())).and_then(|f| f.parent());
+        self.buffer.set_modified(false);
+        self.update_title();
+        if old_dir.as_ref().map(|d| d.uri()) != file.parent().map(|d| d.uri()) {
+            self.reload_preview();
+        }
+        true
+    }
+
+    fn confirm_close(self: &Rc<Self>) {
+        let name = self.file_name().unwrap_or_else(|| "Untitled".into());
+        let dialog = adw::AlertDialog::new(Some("Save changes?"), Some(&format!("{name} has unsaved changes.")));
+        dialog.add_responses(&[("cancel", "_Cancel"), ("discard", "_Discard"), ("save", "_Save")]);
+        dialog.set_response_appearance("discard", adw::ResponseAppearance::Destructive);
+        dialog.set_response_appearance("save", adw::ResponseAppearance::Suggested);
+        dialog.set_default_response(Some("save"));
+        dialog.set_close_response("cancel");
+        let weak = Rc::downgrade(self);
+        dialog.choose(Some(&self.window), None::<&gio::Cancellable>, move |response| {
+            let Some(doc) = weak.upgrade() else { return };
+            match response.as_str() {
+                "discard" => {
+                    doc.buffer.set_modified(false);
+                    doc.window.close();
+                }
+                "save" => doc.save(|doc| doc.window.close()),
+                _ => {}
+            }
+        });
+    }
+
     pub fn open_here_or_new_window(self: &Rc<Self>, file: gio::File) {
         if self.is_pristine() {
             self.open(&file);
@@ -258,6 +339,11 @@ pub fn title(name: Option<&str>, modified: bool) -> String {
     if modified { format!("• {name}") } else { name.to_string() }
 }
 
+pub fn write_text(file: &gio::File, text: &str) -> Result<(), glib::Error> {
+    file.replace_contents(text.as_bytes(), None, false, gio::FileCreateFlags::NONE, None::<&gio::Cancellable>)
+        .map(|_| ())
+}
+
 pub fn read_text(file: &gio::File) -> Result<String, String> {
     let (bytes, _) = file.load_contents(None::<&gio::Cancellable>).map_err(|e| e.message().to_string())?;
     String::from_utf8(bytes.to_vec()).map_err(|_| "not a UTF-8 text file".to_string())
@@ -298,6 +384,19 @@ mod tests {
     fn read_text_rejects_binary() {
         let file = temp_file("bin.md", &[0xff, 0xfe, 0x00, 0x80]);
         assert_eq!(read_text(&file).unwrap_err(), "not a UTF-8 text file");
+    }
+
+    #[test]
+    fn write_text_overwrites_file_with_exact_content() {
+        let file = temp_file("save.md", b"old content that is longer");
+        write_text(&file, "new ✓\n").unwrap();
+        assert_eq!(std::fs::read(file.path().unwrap()).unwrap(), "new ✓\n".as_bytes());
+    }
+
+    #[test]
+    fn write_text_fails_in_missing_directory() {
+        let file = gio::File::for_path("/nonexistent/dir/downmark.md");
+        assert!(write_text(&file, "x").is_err());
     }
 
     #[test]

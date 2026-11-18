@@ -21,6 +21,8 @@ table { border-collapse: collapse; }
 th, td { border: 1px solid rgba(127,127,127,.4); padding: 4px 10px; }
 blockquote { margin: 0; padding-left: 1em; border-left: 4px solid rgba(127,127,127,.4); opacity: .85; }
 img { max-width: 100%; }
+.footnote-definition { font-size: .9em; margin-top: 1em; }
+.footnote-definition p { display: inline; }
 a { color: #3584e4; }
 ";
 
