@@ -145,6 +145,12 @@ impl Doc {
             }
         });
 
+        let weak = Rc::downgrade(self);
+        self.preview.connect_decide_policy(move |_, decision, kind| {
+            kind == webkit6::PolicyDecisionType::NavigationAction
+                && weak.upgrade().is_some_and(|doc| doc.handle_link(decision))
+        });
+
         let keep_alive = RefCell::new(Some(self.clone()));
         self.window.connect_close_request(move |_| {
             let Some(doc) = keep_alive.borrow().clone() else {
@@ -211,7 +217,31 @@ impl Doc {
     }
 
     fn reload_preview(&self) {
-        self.preview.load_html(&render::page(&render::to_html(&self.text())), None);
+        let base = self.file.borrow().as_ref().and_then(base_uri);
+        self.preview.load_html(&render::page(&render::to_html(&self.text())), base.as_deref());
+    }
+
+    fn handle_link(&self, decision: &webkit6::PolicyDecision) -> bool {
+        let Some(action) = decision
+            .downcast_ref::<webkit6::NavigationPolicyDecision>()
+            .and_then(|d| d.navigation_action())
+        else {
+            return false;
+        };
+        if action.navigation_type() != webkit6::NavigationType::LinkClicked {
+            return false;
+        }
+        let Some(uri) = action.request().and_then(|r| r.uri()) else {
+            return false;
+        };
+        if is_internal(&uri, &self.preview.uri().unwrap_or_default()) {
+            return false;
+        }
+        decision.ignore();
+        if is_launchable(&uri) {
+            gtk::UriLauncher::new(&uri).launch(Some(&self.window), None::<&gio::Cancellable>, |_| {});
+        }
+        true
     }
 
     fn is_pristine(&self) -> bool {
@@ -339,6 +369,20 @@ pub fn title(name: Option<&str>, modified: bool) -> String {
     if modified { format!("• {name}") } else { name.to_string() }
 }
 
+pub fn base_uri(file: &gio::File) -> Option<String> {
+    let dir = file.parent()?.uri();
+    Some(if dir.ends_with('/') { dir.into() } else { format!("{dir}/") })
+}
+
+pub fn is_internal(uri: &str, page: &str) -> bool {
+    uri.split_once('#').is_some_and(|(path, _)| path == page)
+}
+
+pub fn is_launchable(uri: &str) -> bool {
+    let scheme = uri.split_once(':').map(|(s, _)| s.to_ascii_lowercase()).unwrap_or_default();
+    matches!(scheme.as_str(), "http" | "https" | "mailto" | "file")
+}
+
 pub fn write_text(file: &gio::File, text: &str) -> Result<(), glib::Error> {
     file.replace_contents(text.as_bytes(), None, false, gio::FileCreateFlags::NONE, None::<&gio::Cancellable>)
         .map(|_| ())
@@ -384,6 +428,41 @@ mod tests {
     fn read_text_rejects_binary() {
         let file = temp_file("bin.md", &[0xff, 0xfe, 0x00, 0x80]);
         assert_eq!(read_text(&file).unwrap_err(), "not a UTF-8 text file");
+    }
+
+    #[test]
+    fn base_uri_is_parent_directory_with_trailing_slash() {
+        let file = gio::File::for_path("/home/user/notes/a b.md");
+        assert_eq!(base_uri(&file).unwrap(), "file:///home/user/notes/");
+    }
+
+    #[test]
+    fn base_uri_of_file_in_root() {
+        assert_eq!(base_uri(&gio::File::for_path("/a.md")).unwrap(), "file:///");
+    }
+
+    #[test]
+    fn fragment_link_on_same_page_is_internal() {
+        assert!(is_internal("file:///notes/#fn1", "file:///notes/"));
+        assert!(is_internal("about:blank#fn1", "about:blank"));
+    }
+
+    #[test]
+    fn only_web_mail_and_file_links_are_launchable() {
+        assert!(is_launchable("https://example.com"));
+        assert!(is_launchable("http://example.com"));
+        assert!(is_launchable("mailto:a@b.c"));
+        assert!(is_launchable("file:///notes/other.md"));
+        assert!(!is_launchable("javascript:alert(1)"));
+        assert!(!is_launchable("JavaScript:alert(1)"));
+        assert!(!is_launchable("data:text/html,x"));
+    }
+
+    #[test]
+    fn other_links_are_external() {
+        assert!(!is_internal("https://example.com/#x", "file:///notes/"));
+        assert!(!is_internal("file:///notes/other.md", "file:///notes/"));
+        assert!(!is_internal("file:///notes/", "file:///notes/"));
     }
 
     #[test]
