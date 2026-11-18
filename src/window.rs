@@ -128,6 +128,8 @@ impl Doc {
             doc.modes.set_active_name(param.and_then(|p| p.str()));
         });
         self.action("open", None, |doc, _| doc.choose_file_to_open());
+        self.action("export-pdf", None, |doc, _| doc.choose_export("pdf"));
+        self.action("export-png", None, |doc, _| doc.choose_export("png"));
         self.action("settings", None, |doc, _| crate::prefs::show(&doc.window, &doc.settings));
         self.action("save", None, |doc, _| doc.save(|_| {}));
         self.action("save-as", None, |doc, _| doc.save_as(|_| {}));
@@ -308,6 +310,84 @@ impl Doc {
         true
     }
 
+    fn choose_export(self: &Rc<Self>, ext: &'static str) {
+        let filter = gtk::FileFilter::new();
+        filter.set_name(Some(&ext.to_uppercase()));
+        filter.add_suffix(ext);
+        let dialog = gtk::FileDialog::builder()
+            .title(format!("Export as {}", ext.to_uppercase()))
+            .initial_name(export_name(self.file_name().as_deref(), ext))
+            .default_filter(&filter)
+            .build();
+        if let Some(dir) = self.file.borrow().as_ref().and_then(|f| f.parent()) {
+            dialog.set_initial_folder(Some(&dir));
+        }
+        let weak = Rc::downgrade(self);
+        dialog.save(Some(&self.window), None::<&gio::Cancellable>, move |result| {
+            if let (Some(doc), Ok(file)) = (weak.upgrade(), result) {
+                if ext == "pdf" {
+                    doc.export_pdf(&file);
+                } else {
+                    doc.export_png(&file);
+                }
+            }
+        });
+    }
+
+    fn export_png(self: &Rc<Self>, file: &gio::File) {
+        let Some(path) = file.path() else {
+            self.toast("Export failed: not a local file");
+            return;
+        };
+        let weak = Rc::downgrade(self);
+        self.preview.snapshot(
+            webkit6::SnapshotRegion::FullDocument,
+            webkit6::SnapshotOptions::NONE,
+            None::<&gio::Cancellable>,
+            move |result| {
+                let Some(doc) = weak.upgrade() else { return };
+                let saved = result
+                    .map_err(|e| e.message().to_string())
+                    .and_then(|texture| texture.save_to_png(&path).map_err(|e| e.message.to_string()));
+                match saved {
+                    Ok(()) => doc.toast(&format!("Exported {}", path.display())),
+                    Err(err) => doc.toast(&format!("Export failed: {err}")),
+                }
+            },
+        );
+    }
+
+    fn export_pdf(self: &Rc<Self>, file: &gio::File) {
+        let settings = gtk::PrintSettings::new();
+        settings.set_printer(&glib::dgettext(Some("gtk40"), "Print to File"));
+        settings.set("output-file-format", Some("pdf"));
+        settings.set("output-uri", Some(&file.uri()));
+        let operation = webkit6::PrintOperation::new(&self.preview);
+        operation.set_print_settings(&settings);
+
+        let failed = Rc::new(std::cell::Cell::new(false));
+        let weak = Rc::downgrade(self);
+        operation.connect_failed(glib::clone!(
+            #[strong] failed,
+            move |_, err| {
+                failed.set(true);
+                if let Some(doc) = weak.upgrade() {
+                    doc.toast(&format!("Export failed: {}", err.message()));
+                }
+            }
+        ));
+        let weak = Rc::downgrade(self);
+        let target = file.path().map(|p| p.display().to_string()).unwrap_or_else(|| file.uri().into());
+        let keep_alive = RefCell::new(Some(operation.clone()));
+        operation.connect_finished(move |_| {
+            keep_alive.take();
+            if let (Some(doc), false) = (weak.upgrade(), failed.get()) {
+                doc.toast(&format!("Exported {target}"));
+            }
+        });
+        operation.print();
+    }
+
     fn confirm_close(self: &Rc<Self>) {
         let name = self.file_name().unwrap_or_else(|| "Untitled".into());
         let dialog = adw::AlertDialog::new(Some("Save changes?"), Some(&format!("{name} has unsaved changes.")));
@@ -387,6 +467,14 @@ fn markdown_filter() -> gtk::FileFilter {
     filter
 }
 
+pub fn export_name(name: Option<&str>, ext: &str) -> String {
+    let stem = name
+        .and_then(|n| std::path::Path::new(n).file_stem())
+        .map(|s| s.to_string_lossy().into_owned())
+        .unwrap_or_else(|| "Untitled".into());
+    format!("{stem}.{ext}")
+}
+
 pub fn title(name: Option<&str>, modified: bool) -> String {
     let name = name.unwrap_or("Untitled");
     if modified { format!("• {name}") } else { name.to_string() }
@@ -424,6 +512,18 @@ mod tests {
         let path = std::env::temp_dir().join(format!("downmark-test-{}-{name}", std::process::id()));
         std::fs::write(&path, bytes).unwrap();
         gio::File::for_path(path)
+    }
+
+    #[test]
+    fn export_name_replaces_extension() {
+        assert_eq!(export_name(Some("README.md"), "pdf"), "README.pdf");
+        assert_eq!(export_name(Some("notes.v2.markdown"), "png"), "notes.v2.png");
+    }
+
+    #[test]
+    fn export_name_without_file() {
+        assert_eq!(export_name(None, "pdf"), "Untitled.pdf");
+        assert_eq!(export_name(Some("NOTES"), "png"), "NOTES.png");
     }
 
     #[test]

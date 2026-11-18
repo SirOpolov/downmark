@@ -23,6 +23,7 @@ blockquote { margin: 0; padding-left: 1em; border-left: 4px solid rgba(127,127,1
 img { max-width: 100%; }
 .footnote-definition { font-size: .9em; margin-top: 1em; }
 .footnote-definition p { display: inline; }
+@media print { :root { color-scheme: light; } }
 a { color: #3584e4; }
 ";
 
@@ -90,6 +91,11 @@ mod tests {
         let html = page("");
         assert!(html.contains(&format!("padding: {}px 24px 24px", super::TOP_MARGIN)));
         assert!(html.contains("body > :first-child { margin-top: 0; }"));
+    }
+
+    #[test]
+    fn page_prints_in_light_colors() {
+        assert!(page("").contains("@media print { :root { color-scheme: light; } }"));
     }
 
     #[test]
