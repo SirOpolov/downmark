@@ -98,7 +98,7 @@ cargo run -- README.md
 cargo test
 ```
 
-Installing into `~/.local` (`make install PREFIX=~/.local`) is for development only. Remove it with `make uninstall PREFIX=~/.local` before installing a package, otherwise it shadows the system install. Releases: see [PUBLISHING.md](PUBLISHING.md).
+Installing into `~/.local` (`make install PREFIX=~/.local`) is for development only. Remove it with `make uninstall PREFIX=~/.local` before installing a package, otherwise it shadows the system install.
 
 ## Support
 
