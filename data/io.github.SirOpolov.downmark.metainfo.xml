@@ -35,6 +35,11 @@
     <binary>downmark</binary>
   </provides>
   <releases>
+    <release version="0.2.0" date="2026-11-18">
+      <description>
+        <p>Tabs: every file opens as a tab in one window, new documents stay in memory until saved. Copy button on code blocks in the preview. Code highlighting in the editor always ends at the closing fence. The app ID is now io.github.SirOpolov.downmark.</p>
+      </description>
+    </release>
     <release version="0.1.1" date="2026-11-18">
       <description>
         <p>Richer Markdown highlighting in the editor: sized headings, syntax highlighting inside fenced code blocks for 20 languages, dimmed table pipes and fences, task boxes, strikethrough and footnotes.</p>
