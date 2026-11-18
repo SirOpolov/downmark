@@ -37,6 +37,7 @@ make install PREFIX=~/.local # or only for your user
 ```
 
 `make uninstall` (with the same `PREFIX`) removes it again.
+Don't keep a `~/.local` install next to the package: it shadows the system one. Run `make uninstall PREFIX=~/.local` before installing the package.
 
 ## Default app for Markdown
 

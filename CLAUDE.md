@@ -23,6 +23,8 @@ Lightweight Markdown editor/renderer for Linux. Rust, GTK4, libadwaita, GtkSourc
 - Short imperative subject, concise body only when needed.
 
 ## Releases
+Full guide incl. AUR and key setup: `PUBLISHING.md`.
+
 GitHub Actions (`.github/workflows/release.yml`) builds and publishes on a `v*` tag push.
 1. Bump `version` in `Cargo.toml`, run `cargo build` to update `Cargo.lock`, add a `<release>` to the metainfo, commit.
 2. `git tag -a vX.Y.Z -m "<brief summary of what changed since the last release>"`
