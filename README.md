@@ -83,23 +83,6 @@ make && sudo make install
 
 </details>
 
-## Make it the default
-
-Right-click a `.md` file → **Open With…** → downmark → **Always use for this file type**. Or:
-
-```sh
-xdg-mime default io.github.GreisMicha.downmark.desktop text/markdown
-```
-
-## Development
-
-```sh
-cargo run -- README.md
-cargo test
-```
-
-Installing into `~/.local` (`make install PREFIX=~/.local`) is for development only. Remove it with `make uninstall PREFIX=~/.local` before installing a package, otherwise it shadows the system install.
-
 ## Support
 
 downmark is free and stays free. Buy me a coffee:
