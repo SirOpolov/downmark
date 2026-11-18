@@ -92,7 +92,7 @@ pub fn language() -> String {
     let mut fences = String::new();
     for (id, names) in FENCES {
         fences += &format!(
-            "    <context id=\"fence-{id}\" class=\"no-spell-check\">\n      <start>^(`{{3,}}|~{{3,}})[ \\t]*(?i:{names})(?=[ \\t{{]|$).*$</start>\n      <end>^\\%{{1@start}}[ \\t]*$</end>\n      <include>\n        <context sub-pattern=\"0\" where=\"start\" style-ref=\"fence\"/>\n        <context sub-pattern=\"0\" where=\"end\" style-ref=\"fence\"/>\n        <context ref=\"{id}:{id}\"/>\n      </include>\n    </context>\n"
+            "    <context id=\"fence-{id}\" class=\"no-spell-check\">\n      <start>^(`{{3,}}|~{{3,}})[ \\t]*(?i:{names})(?=[ \\t{{]|$).*$</start>\n      <end>^\\%{{1@start}}[ \\t]*$</end>\n      <include>\n        <context sub-pattern=\"0\" where=\"start\" style-ref=\"fence\"/>\n        <context sub-pattern=\"0\" where=\"end\" style-ref=\"fence\"/>\n        <context id=\"fence-{id}-line\" end-at-line-end=\"true\">\n          <start>^(?!(`{{3,}}|~{{3,}})[ \\t]*$)</start>\n          <include><context ref=\"{id}:{id}\"/></include>\n        </context>\n      </include>\n    </context>\n"
         );
         contexts.insert_str(0, &format!("        <context ref=\"fence-{id}\"/>\n"));
     }
@@ -156,6 +156,13 @@ mod tests {
         assert!(lang.contains(r#"<context ref="rust:rust"/>"#));
         assert!(lang.contains(r#"<context ref="python3:python3"/>"#));
         assert!(lang.contains("(?i:javascript|js|jsx|mjs)"));
+    }
+
+    #[test]
+    fn embedded_language_cannot_swallow_the_closing_fence() {
+        let lang = language();
+        assert!(lang.contains(r#"<context id="fence-sh-line" end-at-line-end="true">"#));
+        assert!(lang.contains(r#"<start>^(?!(`{3,}|~{3,})[ \t]*$)</start>"#));
     }
 
     #[test]
