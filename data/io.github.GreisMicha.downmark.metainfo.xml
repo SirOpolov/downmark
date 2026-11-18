@@ -32,6 +32,11 @@
     <binary>downmark</binary>
   </provides>
   <releases>
+    <release version="0.1.1" date="2026-11-18">
+      <description>
+        <p>Richer Markdown highlighting in the editor: sized headings, syntax highlighting inside fenced code blocks for 20 languages, dimmed table pipes and fences, task boxes, strikethrough and footnotes.</p>
+      </description>
+    </release>
     <release version="0.1.0" date="2026-11-18">
       <description>
         <p>First release.</p>
