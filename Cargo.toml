@@ -5,7 +5,7 @@ edition = "2024"
 rust-version = "1.92"
 description = "Lightweight Markdown editor with live preview"
 license = "MIT"
-repository = "https://github.com/GreisMicha/downmark"
+repository = "https://github.com/SirOpolov/downmark"
 
 [dependencies]
 adw = { version = "0.9.2", package = "libadwaita", features = ["v1_7"] }

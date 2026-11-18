@@ -1,6 +1,6 @@
 PREFIX ?= /usr/local
 DESTDIR ?=
-APP_ID = io.github.GreisMicha.downmark
+APP_ID = io.github.SirOpolov.downmark
 
 build:
 	cargo build --release --locked

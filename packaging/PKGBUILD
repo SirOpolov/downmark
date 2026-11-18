@@ -1,10 +1,10 @@
-# Maintainer: Micha <https://github.com/GreisMicha>
+# Maintainer: SirOpolov <https://github.com/SirOpolov>
 pkgname=downmark
 pkgver=0.1.1
 pkgrel=1
 pkgdesc='Lightweight Markdown editor with live preview'
 arch=('x86_64')
-url='https://github.com/GreisMicha/downmark'
+url='https://github.com/SirOpolov/downmark'
 license=('MIT')
 depends=('gtk4' 'libadwaita' 'gtksourceview5' 'webkitgtk-6.0' 'glib2' 'gcc-libs' 'glibc')
 makedepends=('cargo')

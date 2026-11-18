@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="data/io.github.GreisMicha.downmark.svg" width="128" alt="downmark">
+  <img src="data/io.github.SirOpolov.downmark.svg" width="128" alt="downmark">
 </p>
 
 <h1 align="center">downmark</h1>
@@ -9,8 +9,8 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/GreisMicha/downmark/releases/latest"><img src="https://img.shields.io/github/v/release/GreisMicha/downmark?style=flat-square&color=111111&label=release" alt="Release"></a>
-  <a href="https://github.com/GreisMicha/downmark/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/GreisMicha/downmark/ci.yml?branch=main&style=flat-square&color=111111&label=ci" alt="CI"></a>
+  <a href="https://github.com/SirOpolov/downmark/releases/latest"><img src="https://img.shields.io/github/v/release/SirOpolov/downmark?style=flat-square&color=111111&label=release" alt="Release"></a>
+  <a href="https://github.com/SirOpolov/downmark/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/SirOpolov/downmark/ci.yml?branch=main&style=flat-square&color=111111&label=ci" alt="CI"></a>
   <img src="https://img.shields.io/badge/platform-linux-111111?style=flat-square" alt="Linux">
   <img src="https://img.shields.io/badge/license-MIT-111111?style=flat-square" alt="MIT license">
   <a href="https://pay.msero.de"><img src="https://img.shields.io/badge/donate-PayPal-111111?style=flat-square&logo=paypal&logoColor=white" alt="Donate with PayPal"></a>
@@ -41,7 +41,7 @@ A lightweight Markdown editor with a split view, made for Linux. No accounts, no
 ### Arch Linux
 
 ```sh
-git clone https://github.com/GreisMicha/downmark.git
+git clone https://github.com/SirOpolov/downmark.git
 cd downmark/packaging && makepkg -si
 ```
 
@@ -57,12 +57,12 @@ Build from source. You need [Rust 1.92+](https://rustup.rs) plus GTK 4.12+, liba
 | Debian 13+, Ubuntu 25.04+ | `sudo apt install build-essential libgtk-4-dev libadwaita-1-dev libgtksourceview-5-dev libwebkitgtk-6.0-dev` |
 
 ```sh
-git clone https://github.com/GreisMicha/downmark.git && cd downmark
+git clone https://github.com/SirOpolov/downmark.git && cd downmark
 make && sudo make install
 ```
 
 > [!NOTE]
-> downmark is developed and tested on Arch Linux. Running it on another distribution? Please [open an issue](https://github.com/GreisMicha/downmark/issues) and tell us whether it works.
+> downmark is developed and tested on Arch Linux. Running it on another distribution? Please [open an issue](https://github.com/SirOpolov/downmark/issues) and tell us whether it works.
 
 ## Shortcuts
 

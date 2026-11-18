@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
-  <id>io.github.GreisMicha.downmark</id>
+  <id>io.github.SirOpolov.downmark</id>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>MIT</project_license>
   <name>downmark</name>
@@ -18,12 +18,15 @@
       <li>Rebindable keyboard shortcuts</li>
     </ul>
   </description>
-  <launchable type="desktop-id">io.github.GreisMicha.downmark.desktop</launchable>
-  <url type="homepage">https://github.com/GreisMicha/downmark</url>
-  <url type="bugtracker">https://github.com/GreisMicha/downmark/issues</url>
+  <launchable type="desktop-id">io.github.SirOpolov.downmark.desktop</launchable>
+  <replaces>
+    <id>io.github.GreisMicha.downmark</id>
+  </replaces>
+  <url type="homepage">https://github.com/SirOpolov/downmark</url>
+  <url type="bugtracker">https://github.com/SirOpolov/downmark/issues</url>
   <screenshots>
     <screenshot type="default">
-      <image>https://raw.githubusercontent.com/GreisMicha/downmark/main/data/screenshot.png</image>
+      <image>https://raw.githubusercontent.com/SirOpolov/downmark/main/data/screenshot.png</image>
       <caption>Split view with live preview</caption>
     </screenshot>
   </screenshots>

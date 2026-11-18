@@ -12,7 +12,7 @@ use gtk::{gio, glib};
 
 use settings::{SHORTCUTS, Settings, Theme};
 
-const APP_ID: &str = "io.github.GreisMicha.downmark";
+const APP_ID: &str = "io.github.SirOpolov.downmark";
 
 fn main() -> glib::ExitCode {
     let app = adw::Application::builder()
