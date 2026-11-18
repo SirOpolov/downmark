@@ -1,8 +1,14 @@
 mod render;
+mod settings;
 mod window;
+
+use std::cell::RefCell;
+use std::rc::Rc;
 
 use adw::prelude::*;
 use gtk::{gio, glib};
+
+use settings::{SHORTCUTS, Settings, Theme};
 
 const APP_ID: &str = "io.github.GreisMicha.downmark";
 
@@ -11,21 +17,41 @@ fn main() -> glib::ExitCode {
         .application_id(APP_ID)
         .flags(gio::ApplicationFlags::HANDLES_OPEN)
         .build();
-    app.connect_activate(|app| window::Doc::new(app).present());
-    app.connect_open(|app, files, _| {
+    let settings = Rc::new(RefCell::new(Settings::load()));
+
+    app.connect_startup(glib::clone!(
+        #[strong] settings,
+        move |app| {
+            apply_accels(app, &settings.borrow());
+            apply_theme(settings.borrow().theme);
+        }
+    ));
+    app.connect_activate(glib::clone!(
+        #[strong] settings,
+        move |app| window::Doc::new(app, &settings).present()
+    ));
+    app.connect_open(move |app, files, _| {
         for file in files {
-            let doc = window::Doc::new(app);
+            let doc = window::Doc::new(app, &settings);
             doc.open(file);
             doc.present();
         }
     });
-    app.set_accels_for_action("win.new", &["<Control>n"]);
-    app.set_accels_for_action("win.open", &["<Control>o"]);
-    app.set_accels_for_action("win.save", &["<Control>s"]);
-    app.set_accels_for_action("win.save-as", &["<Shift><Control>s"]);
-    app.set_accels_for_action("window.close", &["<Control>w"]);
-    app.set_accels_for_action("win.mode::editor", &["<Control>1"]);
-    app.set_accels_for_action("win.mode::split", &["<Control>2"]);
-    app.set_accels_for_action("win.mode::preview", &["<Control>3"]);
     app.run()
+}
+
+pub fn apply_accels(app: &adw::Application, settings: &Settings) {
+    for shortcut in SHORTCUTS {
+        let accel = settings.accel(shortcut.id);
+        let accels: &[&str] = if accel.is_empty() { &[] } else { &[accel] };
+        app.set_accels_for_action(shortcut.action, accels);
+    }
+}
+
+pub fn apply_theme(theme: Theme) {
+    adw::StyleManager::default().set_color_scheme(match theme {
+        Theme::System => adw::ColorScheme::Default,
+        Theme::Light => adw::ColorScheme::ForceLight,
+        Theme::Dark => adw::ColorScheme::ForceDark,
+    });
 }

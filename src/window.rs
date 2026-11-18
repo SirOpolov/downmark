@@ -8,6 +8,7 @@ use sourceview5::prelude::*;
 use webkit6::prelude::*;
 
 use crate::render;
+use crate::settings::Settings;
 
 const RENDER_DELAY: Duration = Duration::from_millis(50);
 
@@ -18,12 +19,13 @@ pub struct Doc {
     preview: webkit6::WebView,
     modes: adw::ToggleGroup,
     toasts: adw::ToastOverlay,
+    settings: Rc<RefCell<Settings>>,
     file: RefCell<Option<gio::File>>,
     pending: RefCell<Option<glib::SourceId>>,
 }
 
 impl Doc {
-    pub fn new(app: &adw::Application) -> Rc<Self> {
+    pub fn new(app: &adw::Application, settings: &Rc<RefCell<Settings>>) -> Rc<Self> {
         let buffer = sourceview5::Buffer::new(None);
         buffer.set_language(sourceview5::LanguageManager::default().language("markdown").as_ref());
 
@@ -94,6 +96,7 @@ impl Doc {
             preview,
             modes,
             toasts,
+            settings: settings.clone(),
             file: RefCell::default(),
             pending: RefCell::default(),
         });
@@ -128,7 +131,7 @@ impl Doc {
         self.action("save-as", None, |doc, _| doc.save_as(|_| {}));
         self.action("new", None, |doc, _| {
             if let Some(app) = doc.window.application().and_downcast::<adw::Application>() {
-                Doc::new(&app).present();
+                Doc::new(&app, &doc.settings).present();
             }
         });
 
@@ -329,7 +332,7 @@ impl Doc {
         if self.is_pristine() {
             self.open(&file);
         } else if let Some(app) = self.window.application().and_downcast::<adw::Application>() {
-            let doc = Doc::new(&app);
+            let doc = Doc::new(&app, &self.settings);
             doc.open(&file);
             doc.present();
         }
