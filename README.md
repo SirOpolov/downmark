@@ -11,8 +11,7 @@
 <p align="center">
   <a href="https://github.com/GreisMicha/downmark/releases/latest"><img src="https://img.shields.io/github/v/release/GreisMicha/downmark?style=flat-square&color=111111&label=release" alt="Release"></a>
   <a href="https://github.com/GreisMicha/downmark/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/GreisMicha/downmark/ci.yml?branch=main&style=flat-square&color=111111&label=ci" alt="CI"></a>
-  <img src="https://img.shields.io/badge/linux-ready-111111?style=flat-square" alt="Linux">
-  <img src="https://img.shields.io/badge/windows%20%C2%B7%20macos-soon-111111?style=flat-square" alt="Windows and macOS soon">
+  <img src="https://img.shields.io/badge/platform-linux-111111?style=flat-square" alt="Linux">
   <img src="https://img.shields.io/badge/license-MIT-111111?style=flat-square" alt="MIT license">
   <a href="https://pay.msero.de"><img src="https://img.shields.io/badge/donate-PayPal-111111?style=flat-square&logo=paypal&logoColor=white" alt="Donate with PayPal"></a>
 </p>
@@ -26,7 +25,7 @@
 
 ---
 
-A lightweight Markdown editor with a split view. No accounts, no cloud, no plugins. Open a file, type, save.
+A lightweight Markdown editor with a split view, made for Linux. No accounts, no cloud, no plugins. Open a file, type, save.
 
 - **Just works.** Opens from your app grid or "Open With…". Set it as the default for `.md` files and forget about it.
 - **Fast.** Written in Rust. Renders a 1 MB document in ~20 ms, the preview updates while you type.
@@ -63,10 +62,6 @@ make && sudo make install
 
 > [!NOTE]
 > downmark is developed and tested on Arch Linux. Running it on another distribution? Please [open an issue](https://github.com/GreisMicha/downmark/issues) and tell us whether it works.
-
-### Windows and macOS
-
-Coming soon.
 
 ## Shortcuts
 
