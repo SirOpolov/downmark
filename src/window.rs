@@ -12,47 +12,18 @@ use crate::settings::Settings;
 
 const RENDER_DELAY: Duration = Duration::from_millis(50);
 
-pub struct Doc {
+pub struct Window {
     window: adw::ApplicationWindow,
     title: adw::WindowTitle,
-    buffer: sourceview5::Buffer,
-    preview: webkit6::WebView,
+    tabs: adw::TabView,
     modes: adw::ToggleGroup,
     toasts: adw::ToastOverlay,
     settings: Rc<RefCell<Settings>>,
-    file: RefCell<Option<gio::File>>,
-    pending: RefCell<Option<glib::SourceId>>,
+    docs: RefCell<Vec<Rc<Doc>>>,
 }
 
-impl Doc {
+impl Window {
     pub fn new(app: &adw::Application, settings: &Rc<RefCell<Settings>>) -> Rc<Self> {
-        let buffer = sourceview5::Buffer::new(None);
-        let languages = sourceview5::LanguageManager::default();
-        buffer.set_language(languages.language("downmark").or_else(|| languages.language("markdown")).as_ref());
-
-        let editor = sourceview5::View::with_buffer(&buffer);
-        editor.set_monospace(true);
-        editor.set_show_line_numbers(true);
-        editor.set_highlight_current_line(true);
-        editor.set_wrap_mode(gtk::WrapMode::WordChar);
-        editor.set_top_margin(render::TOP_MARGIN);
-        editor.set_left_margin(8);
-        let editor_scroll = gtk::ScrolledWindow::builder().child(&editor).build();
-
-        let preview = webkit6::WebView::new();
-        if let Some(settings) = WebViewExt::settings(&preview) {
-            settings.set_enable_javascript_markup(false);
-        }
-
-        let paned = gtk::Paned::builder()
-            .orientation(gtk::Orientation::Horizontal)
-            .start_child(&editor_scroll)
-            .end_child(&preview)
-            .shrink_start_child(false)
-            .shrink_end_child(false)
-            .position(600)
-            .build();
-
         let modes = adw::ToggleGroup::new();
         for (name, icon) in [
             ("editor", "document-edit-symbolic"),
@@ -61,15 +32,6 @@ impl Doc {
         ] {
             modes.add(adw::Toggle::builder().name(name).icon_name(icon).build());
         }
-        modes.connect_active_name_notify(glib::clone!(
-            #[weak] editor_scroll,
-            #[weak] preview,
-            move |modes| {
-                let mode = modes.active_name().unwrap_or_default();
-                editor_scroll.set_visible(mode != "preview");
-                preview.set_visible(mode != "editor");
-            }
-        ));
         modes.set_active_name(Some("split"));
 
         let title = adw::WindowTitle::new("", "");
@@ -78,10 +40,13 @@ impl Doc {
         header.pack_end(&gtk::MenuButton::builder().icon_name("open-menu-symbolic").menu_model(&main_menu()).primary(true).build());
         header.pack_end(&modes);
 
+        let tabs = adw::TabView::new();
+        let tab_bar = adw::TabBar::builder().view(&tabs).autohide(false).build();
         let toasts = adw::ToastOverlay::new();
-        toasts.set_child(Some(&paned));
+        toasts.set_child(Some(&tabs));
         let content = adw::ToolbarView::new();
         content.add_top_bar(&header);
+        content.add_top_bar(&tab_bar);
         content.set_content(Some(&toasts));
 
         let window = adw::ApplicationWindow::builder()
@@ -91,22 +56,18 @@ impl Doc {
             .content(&content)
             .build();
 
-        let doc = Rc::new(Doc {
+        let win = Rc::new(Window {
             window,
             title,
-            buffer,
-            preview,
+            tabs,
             modes,
             toasts,
             settings: settings.clone(),
-            file: RefCell::default(),
-            pending: RefCell::default(),
+            docs: RefCell::default(),
         });
-        doc.connect_signals();
-        doc.follow_dark_mode();
-        doc.update_title();
-        doc.reload_preview();
-        doc
+        win.connect_signals();
+        win.add_doc();
+        win
     }
 
     pub fn present(&self) {
@@ -117,29 +78,245 @@ impl Doc {
         let action = gio::SimpleAction::new(name, param);
         let weak = Rc::downgrade(self);
         action.connect_activate(move |_, param| {
-            if let Some(doc) = weak.upgrade() {
-                f(&doc, param);
+            if let Some(win) = weak.upgrade() {
+                f(&win, param);
             }
         });
         self.window.add_action(&action);
     }
 
-    fn connect_signals(self: &Rc<Self>) {
-        self.action("mode", Some(glib::VariantTy::STRING), |doc, param| {
-            doc.modes.set_active_name(param.and_then(|p| p.str()));
+    fn doc_action(self: &Rc<Self>, name: &str, f: impl Fn(&Rc<Doc>) + 'static) {
+        self.action(name, None, move |win, _| {
+            if let Some(doc) = win.current() {
+                f(&doc);
+            }
         });
-        self.action("open", None, |doc, _| doc.choose_file_to_open());
-        self.action("export-pdf", None, |doc, _| doc.choose_export("pdf"));
-        self.action("export-png", None, |doc, _| doc.choose_export("png"));
-        self.action("settings", None, |doc, _| crate::prefs::show(&doc.window, &doc.settings));
-        self.action("save", None, |doc, _| doc.save(|_| {}));
-        self.action("save-as", None, |doc, _| doc.save_as(|_| {}));
-        self.action("new", None, |doc, _| {
-            if let Some(app) = doc.window.application().and_downcast::<adw::Application>() {
-                Doc::new(&app, &doc.settings).present();
+    }
+
+    fn connect_signals(self: &Rc<Self>) {
+        self.action("mode", Some(glib::VariantTy::STRING), |win, param| {
+            win.modes.set_active_name(param.and_then(|p| p.str()));
+        });
+        self.action("new", None, |win, _| {
+            win.add_doc();
+        });
+        self.action("open", None, |win, _| win.choose_files_to_open());
+        self.action("close-tab", None, |win, _| {
+            if let Some(page) = win.tabs.selected_page() {
+                win.tabs.close_page(&page);
+            }
+        });
+        self.action("settings", None, |win, _| crate::prefs::show(&win.window, &win.settings));
+        self.doc_action("save", |doc| doc.save(|_| {}));
+        self.doc_action("save-as", |doc| doc.save_as(|_| {}));
+        self.doc_action("export-pdf", |doc| doc.choose_export("pdf"));
+        self.doc_action("export-png", |doc| doc.choose_export("png"));
+
+        let weak = Rc::downgrade(self);
+        self.modes.connect_active_name_notify(move |modes| {
+            if let Some(win) = weak.upgrade() {
+                let mode = modes.active_name().unwrap_or_default();
+                for doc in win.docs.borrow().iter() {
+                    doc.set_mode(&mode);
+                }
             }
         });
 
+        let weak = Rc::downgrade(self);
+        adw::StyleManager::default().connect_dark_notify(move |style| {
+            if let Some(win) = weak.upgrade() {
+                for doc in win.docs.borrow().iter() {
+                    doc.apply_dark(style.is_dark());
+                }
+            }
+        });
+
+        let weak = Rc::downgrade(self);
+        self.tabs.connect_selected_page_notify(move |_| {
+            if let Some(doc) = weak.upgrade().and_then(|win| win.current()) {
+                doc.update_title();
+            }
+        });
+
+        let weak = Rc::downgrade(self);
+        self.tabs.connect_close_page(move |tabs, page| {
+            match weak.upgrade().and_then(|win| win.doc_for(page).map(|doc| (win, doc))) {
+                Some((win, doc)) if doc.buffer.is_modified() => {
+                    tabs.close_page_finish(page, false);
+                    win.confirm_close(&doc, |win, doc| win.tabs.close_page(&doc.page));
+                }
+                _ => tabs.close_page_finish(page, true),
+            }
+            glib::Propagation::Stop
+        });
+
+        let weak = Rc::downgrade(self);
+        self.tabs.connect_page_detached(move |tabs, page, _| {
+            if let Some(win) = weak.upgrade() {
+                win.docs.borrow_mut().retain(|doc| &doc.page != page);
+                if tabs.n_pages() == 0 {
+                    win.window.close();
+                }
+            }
+        });
+
+        let keep_alive = RefCell::new(Some(self.clone()));
+        self.window.connect_close_request(move |_| {
+            let Some(win) = keep_alive.borrow().clone() else {
+                return glib::Propagation::Proceed;
+            };
+            let modified = win.docs.borrow().iter().find(|doc| doc.buffer.is_modified()).cloned();
+            if let Some(doc) = modified {
+                win.confirm_close(&doc, |win, _| win.window.close());
+                return glib::Propagation::Stop;
+            }
+            keep_alive.take();
+            glib::Propagation::Proceed
+        });
+    }
+
+    fn current(&self) -> Option<Rc<Doc>> {
+        self.doc_for(&self.tabs.selected_page()?)
+    }
+
+    fn doc_for(&self, page: &adw::TabPage) -> Option<Rc<Doc>> {
+        self.docs.borrow().iter().find(|doc| &doc.page == page).cloned()
+    }
+
+    fn add_doc(&self) -> Rc<Doc> {
+        let doc = Doc::new(self);
+        self.docs.borrow_mut().push(doc.clone());
+        self.tabs.set_selected_page(&doc.page);
+        doc.update_title();
+        doc.focus();
+        doc
+    }
+
+    pub fn open(&self, file: &gio::File) {
+        let open = self.docs.borrow().iter().find(|doc| doc.file.borrow().as_ref().is_some_and(|f| f.equal(file))).cloned();
+        if let Some(doc) = open {
+            self.tabs.set_selected_page(&doc.page);
+            return;
+        }
+        let doc = match self.current() {
+            Some(doc) if doc.is_pristine() => doc,
+            _ => self.add_doc(),
+        };
+        if !doc.open(file) && doc.is_pristine() && self.tabs.n_pages() > 1 {
+            self.tabs.close_page(&doc.page);
+        }
+    }
+
+    fn choose_files_to_open(self: &Rc<Self>) {
+        let dialog = gtk::FileDialog::builder().title("Open Markdown Files").default_filter(&markdown_filter()).build();
+        let weak = Rc::downgrade(self);
+        dialog.open_multiple(Some(&self.window), None::<&gio::Cancellable>, move |result| {
+            if let (Some(win), Ok(files)) = (weak.upgrade(), result) {
+                for file in files.iter::<gio::File>().flatten() {
+                    win.open(&file);
+                }
+            }
+        });
+    }
+
+    fn confirm_close(self: &Rc<Self>, doc: &Rc<Doc>, after: fn(&Rc<Self>, &Rc<Doc>)) {
+        self.tabs.set_selected_page(&doc.page);
+        let name = doc.file_name().unwrap_or_else(|| "Untitled".into());
+        let body = if doc.file.borrow().is_some() {
+            format!("{name} has unsaved changes.")
+        } else {
+            format!("{name} was never saved. Save it to keep it, otherwise it is discarded.")
+        };
+        let dialog = adw::AlertDialog::new(Some("Save changes?"), Some(&body));
+        dialog.add_responses(&[("cancel", "_Cancel"), ("discard", "_Discard"), ("save", "_Save")]);
+        dialog.set_response_appearance("discard", adw::ResponseAppearance::Destructive);
+        dialog.set_response_appearance("save", adw::ResponseAppearance::Suggested);
+        dialog.set_default_response(Some("save"));
+        dialog.set_close_response("cancel");
+        let weak = Rc::downgrade(self);
+        let doc_weak = Rc::downgrade(doc);
+        dialog.choose(Some(&self.window), None::<&gio::Cancellable>, move |response| {
+            let (Some(win), Some(doc)) = (weak.upgrade(), doc_weak.upgrade()) else { return };
+            match response.as_str() {
+                "discard" => {
+                    doc.buffer.set_modified(false);
+                    after(&win, &doc);
+                }
+                "save" => doc.save(move |doc| {
+                    if let Some(win) = weak.upgrade() {
+                        after(&win, doc);
+                    }
+                }),
+                _ => {}
+            }
+        });
+    }
+}
+
+pub struct Doc {
+    window: adw::ApplicationWindow,
+    title: adw::WindowTitle,
+    toasts: adw::ToastOverlay,
+    page: adw::TabPage,
+    editor: gtk::ScrolledWindow,
+    view: sourceview5::View,
+    buffer: sourceview5::Buffer,
+    preview: webkit6::WebView,
+    file: RefCell<Option<gio::File>>,
+    pending: RefCell<Option<glib::SourceId>>,
+}
+
+impl Doc {
+    fn new(win: &Window) -> Rc<Self> {
+        let buffer = sourceview5::Buffer::new(None);
+        let languages = sourceview5::LanguageManager::default();
+        buffer.set_language(languages.language("downmark").or_else(|| languages.language("markdown")).as_ref());
+
+        let view = sourceview5::View::with_buffer(&buffer);
+        view.set_monospace(true);
+        view.set_show_line_numbers(true);
+        view.set_highlight_current_line(true);
+        view.set_wrap_mode(gtk::WrapMode::WordChar);
+        view.set_top_margin(render::TOP_MARGIN);
+        view.set_left_margin(8);
+        let editor = gtk::ScrolledWindow::builder().child(&view).build();
+
+        let preview = webkit6::WebView::new();
+        if let Some(settings) = WebViewExt::settings(&preview) {
+            settings.set_enable_javascript_markup(false);
+        }
+
+        let paned = gtk::Paned::builder()
+            .orientation(gtk::Orientation::Horizontal)
+            .start_child(&editor)
+            .end_child(&preview)
+            .shrink_start_child(false)
+            .shrink_end_child(false)
+            .position(600)
+            .build();
+        let page = win.tabs.append(&paned);
+
+        let doc = Rc::new(Doc {
+            window: win.window.clone(),
+            title: win.title.clone(),
+            toasts: win.toasts.clone(),
+            page,
+            editor,
+            view,
+            buffer,
+            preview,
+            file: RefCell::default(),
+            pending: RefCell::default(),
+        });
+        doc.set_mode(&win.modes.active_name().unwrap_or_default());
+        doc.apply_dark(adw::StyleManager::default().is_dark());
+        doc.connect_signals();
+        doc.update_title();
+        doc.reload_preview();
+        doc
+    }
+
+    fn connect_signals(self: &Rc<Self>) {
         let weak = Rc::downgrade(self);
         self.buffer.connect_changed(move |_| {
             if let Some(doc) = weak.upgrade() {
@@ -152,36 +329,20 @@ impl Doc {
                 doc.update_title();
             }
         });
-
         let weak = Rc::downgrade(self);
         self.preview.connect_decide_policy(move |_, decision, kind| {
             kind == webkit6::PolicyDecisionType::NavigationAction
                 && weak.upgrade().is_some_and(|doc| doc.handle_link(decision))
         });
-
-        let keep_alive = RefCell::new(Some(self.clone()));
-        self.window.connect_close_request(move |_| {
-            let Some(doc) = keep_alive.borrow().clone() else {
-                return glib::Propagation::Proceed;
-            };
-            if doc.buffer.is_modified() {
-                doc.confirm_close();
-                return glib::Propagation::Stop;
-            }
-            keep_alive.take();
-            glib::Propagation::Proceed
-        });
     }
 
-    fn follow_dark_mode(self: &Rc<Self>) {
-        let style = adw::StyleManager::default();
-        self.apply_dark(style.is_dark());
-        let weak = Rc::downgrade(self);
-        style.connect_dark_notify(move |style| {
-            if let Some(doc) = weak.upgrade() {
-                doc.apply_dark(style.is_dark());
-            }
-        });
+    fn set_mode(&self, mode: &str) {
+        self.editor.set_visible(mode != "preview");
+        self.preview.set_visible(mode != "editor");
+    }
+
+    fn focus(&self) {
+        self.view.grab_focus();
     }
 
     fn apply_dark(&self, dark: bool) {
@@ -200,6 +361,10 @@ impl Doc {
 
     fn update_title(&self) {
         let title = title(self.file_name().as_deref(), self.buffer.is_modified());
+        self.page.set_title(&title);
+        if !self.page.is_selected() {
+            return;
+        }
         let dir = self.file.borrow().as_ref().and_then(|f| f.parent()).and_then(|p| p.path());
         self.title.set_title(&title);
         self.title.set_subtitle(&dir.map(|d| display_dir(&d, &glib::home_dir())).unwrap_or_default());
@@ -260,17 +425,7 @@ impl Doc {
         self.file.borrow().is_none() && !self.buffer.is_modified() && self.buffer.char_count() == 0
     }
 
-    fn choose_file_to_open(self: &Rc<Self>) {
-        let dialog = gtk::FileDialog::builder().title("Open Markdown File").default_filter(&markdown_filter()).build();
-        let weak = Rc::downgrade(self);
-        dialog.open(Some(&self.window), None::<&gio::Cancellable>, move |result| {
-            if let (Some(doc), Ok(file)) = (weak.upgrade(), result) {
-                doc.open_here_or_new_window(file);
-            }
-        });
-    }
-
-    fn save(self: &Rc<Self>, after: fn(&Rc<Self>)) {
+    fn save(self: &Rc<Self>, after: impl FnOnce(&Rc<Self>) + 'static) {
         let file = self.file.borrow().clone();
         match file {
             Some(file) => {
@@ -282,7 +437,7 @@ impl Doc {
         }
     }
 
-    fn save_as(self: &Rc<Self>, after: fn(&Rc<Self>)) {
+    fn save_as(self: &Rc<Self>, after: impl FnOnce(&Rc<Self>) + 'static) {
         let dialog = gtk::FileDialog::builder()
             .title("Save As")
             .initial_name(self.file_name().unwrap_or_else(|| "Untitled.md".into()))
@@ -338,7 +493,6 @@ impl Doc {
             }
         });
     }
-
     fn export_png(self: &Rc<Self>, file: &gio::File) {
         let Some(path) = file.path() else {
             self.toast("Export failed: not a local file");
@@ -393,39 +547,7 @@ impl Doc {
         operation.print();
     }
 
-    fn confirm_close(self: &Rc<Self>) {
-        let name = self.file_name().unwrap_or_else(|| "Untitled".into());
-        let dialog = adw::AlertDialog::new(Some("Save changes?"), Some(&format!("{name} has unsaved changes.")));
-        dialog.add_responses(&[("cancel", "_Cancel"), ("discard", "_Discard"), ("save", "_Save")]);
-        dialog.set_response_appearance("discard", adw::ResponseAppearance::Destructive);
-        dialog.set_response_appearance("save", adw::ResponseAppearance::Suggested);
-        dialog.set_default_response(Some("save"));
-        dialog.set_close_response("cancel");
-        let weak = Rc::downgrade(self);
-        dialog.choose(Some(&self.window), None::<&gio::Cancellable>, move |response| {
-            let Some(doc) = weak.upgrade() else { return };
-            match response.as_str() {
-                "discard" => {
-                    doc.buffer.set_modified(false);
-                    doc.window.close();
-                }
-                "save" => doc.save(|doc| doc.window.close()),
-                _ => {}
-            }
-        });
-    }
-
-    pub fn open_here_or_new_window(self: &Rc<Self>, file: gio::File) {
-        if self.is_pristine() {
-            self.open(&file);
-        } else if let Some(app) = self.window.application().and_downcast::<adw::Application>() {
-            let doc = Doc::new(&app, &self.settings);
-            doc.open(&file);
-            doc.present();
-        }
-    }
-
-    pub fn open(&self, file: &gio::File) {
+    fn open(&self, file: &gio::File) -> bool {
         match read_text(file) {
             Ok(text) => {
                 self.buffer.begin_irreversible_action();
@@ -436,10 +558,12 @@ impl Doc {
                 self.file.replace(Some(file.clone()));
                 self.update_title();
                 self.reload_preview();
+                true
             }
             Err(err) => {
                 let name = file.basename().map(|p| p.display().to_string()).unwrap_or_default();
                 self.toast(&format!("Could not open {name}: {err}"));
+                false
             }
         }
     }
@@ -447,7 +571,7 @@ impl Doc {
 
 fn main_menu() -> gio::Menu {
     let files = gio::Menu::new();
-    files.append(Some("New Window"), Some("win.new"));
+    files.append(Some("New Document"), Some("win.new"));
     files.append(Some("Open…"), Some("win.open"));
     files.append(Some("Save"), Some("win.save"));
     files.append(Some("Save As…"), Some("win.save-as"));

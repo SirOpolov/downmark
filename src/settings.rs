@@ -11,11 +11,11 @@ pub struct Shortcut {
 }
 
 pub const SHORTCUTS: &[Shortcut] = &[
-    Shortcut { id: "new", action: "win.new", title: "New window", default: "<Control>n" },
+    Shortcut { id: "new", action: "win.new", title: "New document", default: "<Control>n" },
     Shortcut { id: "open", action: "win.open", title: "Open", default: "<Control>o" },
     Shortcut { id: "save", action: "win.save", title: "Save", default: "<Control>s" },
     Shortcut { id: "save-as", action: "win.save-as", title: "Save as", default: "<Shift><Control>s" },
-    Shortcut { id: "close", action: "window.close", title: "Close window", default: "<Control>w" },
+    Shortcut { id: "close", action: "win.close-tab", title: "Close tab", default: "<Control>w" },
     Shortcut { id: "mode-editor", action: "win.mode::editor", title: "Editor view", default: "<Control>1" },
     Shortcut { id: "mode-split", action: "win.mode::split", title: "Split view", default: "<Control>2" },
     Shortcut { id: "mode-preview", action: "win.mode::preview", title: "Preview view", default: "<Control>3" },
@@ -159,6 +159,13 @@ mod tests {
         }
         assert!(SHORTCUTS.iter().any(|s| s.id == "export-pdf"));
         assert!(SHORTCUTS.iter().any(|s| s.id == "export-png"));
+    }
+
+    #[test]
+    fn new_and_close_work_on_tabs() {
+        let action = |id: &str| SHORTCUTS.iter().find(|s| s.id == id).map(|s| s.action);
+        assert_eq!(action("new"), Some("win.new"));
+        assert_eq!(action("close"), Some("win.close-tab"));
     }
 
     #[test]

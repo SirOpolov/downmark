@@ -29,6 +29,7 @@ A lightweight Markdown editor with a split view, made for Linux. No accounts, no
 
 - **Just works.** Set it as the default for `.md` files and forget about it.
 - **Fast.** Renders a 1 MB document in ~20 ms, the preview updates while you type.
+- **Tabs.** Every file opens as a tab in one window. New documents stay in memory until you save them; close them unsaved and they're gone.
 - **Three views.** Editor, Split, Preview — one click or `Ctrl+1` `Ctrl+2` `Ctrl+3`.
 - **Export.** Save the rendered document as PDF (selectable text) or PNG.
 - **GitHub flavored.** Tables, task lists, footnotes, strikethrough, fenced code.
@@ -71,11 +72,11 @@ make && sudo make install
 
 | Action | Keys |
 |---|---|
-| New window | `Ctrl+N` |
+| New document | `Ctrl+N` |
 | Open | `Ctrl+O` |
 | Save | `Ctrl+S` |
 | Save as | `Shift+Ctrl+S` |
-| Close window | `Ctrl+W` |
+| Close tab | `Ctrl+W` |
 | Editor / Split / Preview | `Ctrl+1` / `Ctrl+2` / `Ctrl+3` |
 | Export as PDF | `Ctrl+E` |
 | Export as PNG | `Shift+Ctrl+E` |

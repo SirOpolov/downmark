@@ -5,7 +5,7 @@ mod settings;
 mod window;
 
 use std::cell::RefCell;
-use std::rc::Rc;
+use std::rc::{Rc, Weak};
 
 use adw::prelude::*;
 use gtk::{gio, glib};
@@ -31,16 +31,26 @@ fn main() -> glib::ExitCode {
             apply_theme(settings.borrow().theme);
         }
     ));
+    let current: Rc<RefCell<Weak<window::Window>>> = Rc::default();
+    let window = move |app: &adw::Application| {
+        if let Some(win) = current.borrow().upgrade() {
+            return win;
+        }
+        let win = window::Window::new(app, &settings);
+        current.replace(Rc::downgrade(&win));
+        win
+    };
+    let window = Rc::new(window);
     app.connect_activate(glib::clone!(
-        #[strong] settings,
-        move |app| window::Doc::new(app, &settings).present()
+        #[strong] window,
+        move |app| window(app).present()
     ));
     app.connect_open(move |app, files, _| {
+        let win = window(app);
         for file in files {
-            let doc = window::Doc::new(app, &settings);
-            doc.open(file);
-            doc.present();
+            win.open(file);
         }
+        win.present();
     });
     app.run()
 }
