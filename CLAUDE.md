@@ -11,6 +11,7 @@ Lightweight Markdown editor/renderer for Linux. Rust, GTK4, libadwaita, GtkSourc
 - `src/render.rs`: Markdown → HTML, page shell, preview update script. Pure, unit-tested, no GTK.
 - `src/settings.rs`: theme + shortcut table, KeyFile load/save, conflict detection. Pure, unit-tested.
 - `src/window.rs`: one document window (editor, preview, files, export) plus pure helpers with tests.
+- `src/highlight.rs`: editor syntax highlighting (GtkSourceView language extending stock Markdown + light/dark schemes), written to the cache dir at startup. Pure parts unit-tested.
 - `src/prefs.rs`: settings dialog (theme, export buttons, shortcut rebinding).
 - `src/main.rs`: app setup, applies accels and theme.
 - New logic gets a test first. GUI is checked manually.

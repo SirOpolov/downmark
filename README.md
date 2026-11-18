@@ -32,6 +32,7 @@ A lightweight Markdown editor with a split view, made for Linux. No accounts, no
 - **Three views.** Editor, Split, Preview — one click or `Ctrl+1` `Ctrl+2` `Ctrl+3`.
 - **Export.** Save the rendered document as PDF (selectable text) or PNG.
 - **GitHub flavored.** Tables, task lists, footnotes, strikethrough, fenced code.
+- **Readable source.** Sized headings, dimmed table pipes and fences, and real syntax highlighting inside code blocks for 20 languages.
 - **Yours.** Light, dark or system theme. Every shortcut can be rebound.
 - **Safe.** Scripts inside documents never run. Links open in your browser.
 

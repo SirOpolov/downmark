@@ -1,3 +1,4 @@
+mod highlight;
 mod prefs;
 mod render;
 mod settings;
@@ -23,6 +24,9 @@ fn main() -> glib::ExitCode {
     app.connect_startup(glib::clone!(
         #[strong] settings,
         move |app| {
+            if let Err(err) = highlight::install() {
+                eprintln!("downmark: syntax highlighting falls back to stock Markdown: {err}");
+            }
             apply_accels(app, &settings.borrow());
             apply_theme(settings.borrow().theme);
         }

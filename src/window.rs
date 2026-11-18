@@ -27,7 +27,8 @@ pub struct Doc {
 impl Doc {
     pub fn new(app: &adw::Application, settings: &Rc<RefCell<Settings>>) -> Rc<Self> {
         let buffer = sourceview5::Buffer::new(None);
-        buffer.set_language(sourceview5::LanguageManager::default().language("markdown").as_ref());
+        let languages = sourceview5::LanguageManager::default();
+        buffer.set_language(languages.language("downmark").or_else(|| languages.language("markdown")).as_ref());
 
         let editor = sourceview5::View::with_buffer(&buffer);
         editor.set_monospace(true);
@@ -184,8 +185,9 @@ impl Doc {
     }
 
     fn apply_dark(&self, dark: bool) {
-        let name = if dark { "Adwaita-dark" } else { "Adwaita" };
-        self.buffer.set_style_scheme(sourceview5::StyleSchemeManager::default().scheme(name).as_ref());
+        let (name, fallback) = if dark { ("downmark-dark", "Adwaita-dark") } else { ("downmark", "Adwaita") };
+        let schemes = sourceview5::StyleSchemeManager::default();
+        self.buffer.set_style_scheme(schemes.scheme(name).or_else(|| schemes.scheme(fallback)).as_ref());
     }
 
     fn text(&self) -> String {
