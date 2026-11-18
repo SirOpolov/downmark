@@ -12,7 +12,7 @@ pub fn to_html(markdown: &str) -> String {
 
 const STYLE: &str = "
 :root { color-scheme: light dark; }
-body { font: 16px/1.6 sans-serif; max-width: 860px; margin: 0 auto; padding: 24px; }
+body { font: 16px/1.6 sans-serif; max-width: 860px; margin: 0 auto; }
 pre, code { font-family: monospace; background: rgba(127,127,127,.15); border-radius: 4px; }
 code { padding: .1em .3em; }
 pre { padding: 12px; overflow-x: auto; }
@@ -24,8 +24,14 @@ img { max-width: 100%; }
 a { color: #3584e4; }
 ";
 
+pub const TOP_MARGIN: i32 = 8;
+
 pub fn page(body: &str) -> String {
-    format!("<!doctype html><html><head><meta charset=\"utf-8\"><style>{STYLE}</style></head><body>{body}</body></html>")
+    format!(
+        "<!doctype html><html><head><meta charset=\"utf-8\"><style>{STYLE}\
+         body {{ padding: {TOP_MARGIN}px 24px 24px; }}\
+         body > :first-child {{ margin-top: 0; }}</style></head><body>{body}</body></html>"
+    )
 }
 
 pub fn update_script(body: &str) -> String {
@@ -75,6 +81,13 @@ mod tests {
             .and_then(|s| s.strip_suffix(';'))
             .unwrap();
         assert_eq!(serde_json::from_str::<String>(literal).unwrap(), html);
+    }
+
+    #[test]
+    fn page_first_line_starts_at_editor_top_margin() {
+        let html = page("");
+        assert!(html.contains(&format!("padding: {}px 24px 24px", super::TOP_MARGIN)));
+        assert!(html.contains("body > :first-child { margin-top: 0; }"));
     }
 
     #[test]

@@ -31,7 +31,7 @@ fn build_window(app: &adw::Application) {
     editor.set_show_line_numbers(true);
     editor.set_highlight_current_line(true);
     editor.set_wrap_mode(gtk::WrapMode::WordChar);
-    editor.set_top_margin(8);
+    editor.set_top_margin(render::TOP_MARGIN);
     editor.set_left_margin(8);
     let editor_scroll = gtk::ScrolledWindow::builder().child(&editor).build();
 
@@ -51,12 +51,12 @@ fn build_window(app: &adw::Application) {
         .build();
 
     let modes = adw::ToggleGroup::new();
-    for (name, icon, tooltip) in [
-        ("editor", "document-edit-symbolic", "Editor (Ctrl+1)"),
-        ("split", "view-dual-symbolic", "Split (Ctrl+2)"),
-        ("preview", "view-reveal-symbolic", "Preview (Ctrl+3)"),
+    for (name, icon) in [
+        ("editor", "document-edit-symbolic"),
+        ("split", "view-dual-symbolic"),
+        ("preview", "view-reveal-symbolic"),
     ] {
-        modes.add(adw::Toggle::builder().name(name).icon_name(icon).tooltip(tooltip).build());
+        modes.add(adw::Toggle::builder().name(name).icon_name(icon).build());
     }
     modes.connect_active_name_notify(glib::clone!(
         #[weak] editor_scroll,
