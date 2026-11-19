@@ -35,6 +35,11 @@
     <binary>downmark</binary>
   </provides>
   <releases>
+    <release version="0.2.3" date="2026-11-19">
+      <description>
+        <p>The selected tab is shaded instead of the inactive ones.</p>
+      </description>
+    </release>
     <release version="0.2.2" date="2026-11-19">
       <description>
         <p>Only the tabs are shaded, the rest of the tab bar blends with the header.</p>
