@@ -1,6 +1,6 @@
 # Maintainer: SirOpolov <https://github.com/SirOpolov>
 pkgname=downmark
-pkgver=0.2.0
+pkgver=0.2.1
 pkgrel=1
 pkgdesc='Lightweight Markdown editor with live preview'
 arch=('x86_64')
@@ -9,7 +9,7 @@ license=('MIT')
 depends=('gtk4' 'libadwaita' 'gtksourceview5' 'webkitgtk-6.0' 'glib2' 'gcc-libs' 'glibc')
 makedepends=('cargo')
 source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
-sha256sums=('ff4cb1b6afe6a2d79f56c16ab63735feef915d5ed605f2fe5abb35d18084ec7a')
+sha256sums=('1a3e3e4181ee6df2316357fecdbbf92b131a436adff71d42cb9c1226d918928e')
 
 prepare() {
   cd "$pkgname-$pkgver"
