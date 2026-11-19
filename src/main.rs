@@ -29,6 +29,13 @@ fn main() -> glib::ExitCode {
             }
             apply_accels(app, &settings.borrow());
             apply_theme(settings.borrow().theme);
+            let css = gtk::CssProvider::new();
+            css.load_from_string("tabbar .box { background-color: var(--headerbar-shade-color); }");
+            gtk::style_context_add_provider_for_display(
+                &gtk::gdk::Display::default().expect("display"),
+                &css,
+                gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
+            );
         }
     ));
     let current: Rc<RefCell<Weak<window::Window>>> = Rc::default();
