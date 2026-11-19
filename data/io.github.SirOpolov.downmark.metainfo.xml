@@ -35,6 +35,11 @@
     <binary>downmark</binary>
   </provides>
   <releases>
+    <release version="0.2.4" date="2026-11-19">
+      <description>
+        <p>The window remembers its size and maximized state.</p>
+      </description>
+    </release>
     <release version="0.2.3" date="2026-11-19">
       <description>
         <p>The selected tab is shaded instead of the inactive ones.</p>

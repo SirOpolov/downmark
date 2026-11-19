@@ -49,7 +49,7 @@ dependencies = [
 
 [[package]]
 name = "downmark"
-version = "0.2.3"
+version = "0.2.4"
 dependencies = [
  "gtk4",
  "libadwaita",
