@@ -30,7 +30,7 @@ fn main() -> glib::ExitCode {
             apply_accels(app, &settings.borrow());
             apply_theme(settings.borrow().theme);
             let css = gtk::CssProvider::new();
-            css.load_from_string("tabbar tab { background-image: linear-gradient(var(--headerbar-shade-color), var(--headerbar-shade-color)); }");
+            css.load_from_string("tabbar tab:selected { background-image: linear-gradient(var(--headerbar-shade-color), var(--headerbar-shade-color)); }");
             gtk::style_context_add_provider_for_display(
                 &gtk::gdk::Display::default().expect("display"),
                 &css,
