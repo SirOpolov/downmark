@@ -86,8 +86,6 @@ make && sudo make install
 
 ## Support
 
-downmark is free and stays free. 
-
 Buy me a coffee:
 
 <p align="center">
