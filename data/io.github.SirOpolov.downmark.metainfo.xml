@@ -35,6 +35,11 @@
     <binary>downmark</binary>
   </provides>
   <releases>
+    <release version="0.2.1" date="2026-11-19">
+      <description>
+        <p>Darker tab bar so tabs stand out from the header.</p>
+      </description>
+    </release>
     <release version="0.2.0" date="2026-11-18">
       <description>
         <p>Tabs: every file opens as a tab in one window, new documents stay in memory until saved. Copy button on code blocks in the preview. Code highlighting in the editor always ends at the closing fence. The app ID is now io.github.SirOpolov.downmark.</p>
