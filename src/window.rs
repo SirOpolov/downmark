@@ -51,8 +51,9 @@ impl Window {
 
         let window = adw::ApplicationWindow::builder()
             .application(app)
-            .default_width(1200)
-            .default_height(800)
+            .default_width(settings.borrow().width)
+            .default_height(settings.borrow().height)
+            .maximized(settings.borrow().maximized)
             .content(&content)
             .build();
 
@@ -170,9 +171,21 @@ impl Window {
                 win.confirm_close(&doc, |win, _| win.window.close());
                 return glib::Propagation::Stop;
             }
+            win.save_state();
             keep_alive.take();
             glib::Propagation::Proceed
         });
+    }
+
+    fn save_state(&self) {
+        let (width, height) = self.window.default_size();
+        let mut settings = self.settings.borrow_mut();
+        settings.width = width;
+        settings.height = height;
+        settings.maximized = self.window.is_maximized();
+        if let Err(err) = settings.save() {
+            eprintln!("downmark: could not save window state: {err}");
+        }
     }
 
     fn current(&self) -> Option<Rc<Doc>> {

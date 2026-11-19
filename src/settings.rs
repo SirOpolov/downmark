@@ -46,13 +46,16 @@ impl Theme {
 #[derive(Debug, PartialEq)]
 pub struct Settings {
     pub theme: Theme,
+    pub width: i32,
+    pub height: i32,
+    pub maximized: bool,
     accels: HashMap<String, String>,
 }
 
 impl Default for Settings {
     fn default() -> Self {
         let accels = SHORTCUTS.iter().map(|s| (s.id.to_string(), s.default.to_string())).collect();
-        Settings { theme: Theme::System, accels }
+        Settings { theme: Theme::System, width: 1200, height: 800, maximized: false, accels }
     }
 }
 
@@ -66,6 +69,9 @@ impl Settings {
         if let Ok(name) = file.string("general", "theme") {
             settings.theme = Theme::ALL.into_iter().find(|t| t.name() == name).unwrap_or(Theme::System);
         }
+        settings.width = file.integer("window", "width").unwrap_or(settings.width);
+        settings.height = file.integer("window", "height").unwrap_or(settings.height);
+        settings.maximized = file.boolean("window", "maximized").unwrap_or(settings.maximized);
         for shortcut in SHORTCUTS {
             if let Ok(accel) = file.string("shortcuts", shortcut.id) {
                 settings.set_accel(shortcut.id, &accel);
@@ -77,6 +83,9 @@ impl Settings {
     pub fn serialize(&self) -> String {
         let file = glib::KeyFile::new();
         file.set_string("general", "theme", self.theme.name());
+        file.set_integer("window", "width", self.width);
+        file.set_integer("window", "height", self.height);
+        file.set_boolean("window", "maximized", self.maximized);
         for shortcut in SHORTCUTS {
             file.set_string("shortcuts", shortcut.id, self.accel(shortcut.id));
         }
@@ -186,6 +195,19 @@ mod tests {
         let loaded = Settings::parse(&settings.serialize());
         assert_eq!(loaded, settings);
         assert_eq!(loaded.accel("open"), "");
+    }
+
+    #[test]
+    fn window_size_and_maximized_survive_a_round_trip() {
+        let settings = Settings { width: 900, height: 650, maximized: true, ..Default::default() };
+        let loaded = Settings::parse(&settings.serialize());
+        assert_eq!((loaded.width, loaded.height, loaded.maximized), (900, 650, true));
+    }
+
+    #[test]
+    fn window_defaults_to_1200_by_800_unmaximized() {
+        let settings = Settings::parse("[general]\ntheme=light\n");
+        assert_eq!((settings.width, settings.height, settings.maximized), (1200, 800, false));
     }
 
     #[test]
