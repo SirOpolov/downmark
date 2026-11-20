@@ -49,13 +49,14 @@ pub struct Settings {
     pub width: i32,
     pub height: i32,
     pub maximized: bool,
+    pub mode: String,
     accels: HashMap<String, String>,
 }
 
 impl Default for Settings {
     fn default() -> Self {
         let accels = SHORTCUTS.iter().map(|s| (s.id.to_string(), s.default.to_string())).collect();
-        Settings { theme: Theme::System, width: 1200, height: 800, maximized: false, accels }
+        Settings { theme: Theme::System, width: 1200, height: 800, maximized: false, mode: "split".to_string(), accels }
     }
 }
 
@@ -72,6 +73,11 @@ impl Settings {
         settings.width = file.integer("window", "width").unwrap_or(settings.width);
         settings.height = file.integer("window", "height").unwrap_or(settings.height);
         settings.maximized = file.boolean("window", "maximized").unwrap_or(settings.maximized);
+        if let Ok(mode) = file.string("window", "mode")
+            && ["editor", "split", "preview"].contains(&mode.as_str())
+        {
+            settings.mode = mode.to_string();
+        }
         for shortcut in SHORTCUTS {
             if let Ok(accel) = file.string("shortcuts", shortcut.id) {
                 settings.set_accel(shortcut.id, &accel);
@@ -86,6 +92,7 @@ impl Settings {
         file.set_integer("window", "width", self.width);
         file.set_integer("window", "height", self.height);
         file.set_boolean("window", "maximized", self.maximized);
+        file.set_string("window", "mode", &self.mode);
         for shortcut in SHORTCUTS {
             file.set_string("shortcuts", shortcut.id, self.accel(shortcut.id));
         }
@@ -208,6 +215,17 @@ mod tests {
     fn window_defaults_to_1200_by_800_unmaximized() {
         let settings = Settings::parse("[general]\ntheme=light\n");
         assert_eq!((settings.width, settings.height, settings.maximized), (1200, 800, false));
+    }
+
+    #[test]
+    fn view_mode_survives_a_round_trip() {
+        let settings = Settings { mode: "preview".to_string(), ..Default::default() };
+        assert_eq!(Settings::parse(&settings.serialize()).mode, "preview");
+    }
+
+    #[test]
+    fn unknown_view_mode_falls_back_to_split() {
+        assert_eq!(Settings::parse("[window]\nmode=bogus\n").mode, "split");
     }
 
     #[test]

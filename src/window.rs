@@ -32,7 +32,7 @@ impl Window {
         ] {
             modes.add(adw::Toggle::builder().name(name).icon_name(icon).build());
         }
-        modes.set_active_name(Some("split"));
+        modes.set_active_name(Some(&settings.borrow().mode));
 
         let title = adw::WindowTitle::new("", "");
         let header = adw::HeaderBar::new();
@@ -183,6 +183,7 @@ impl Window {
         settings.width = width;
         settings.height = height;
         settings.maximized = self.window.is_maximized();
+        settings.mode = self.modes.active_name().unwrap_or_default().to_string();
         if let Err(err) = settings.save() {
             eprintln!("downmark: could not save window state: {err}");
         }
