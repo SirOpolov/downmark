@@ -19,6 +19,7 @@ pub const SHORTCUTS: &[Shortcut] = &[
     Shortcut { id: "mode-editor", action: "win.mode::editor", title: "Editor view", default: "<Control>1" },
     Shortcut { id: "mode-split", action: "win.mode::split", title: "Split view", default: "<Control>2" },
     Shortcut { id: "mode-preview", action: "win.mode::preview", title: "Preview view", default: "<Control>3" },
+    Shortcut { id: "find", action: "win.find", title: "Find", default: "<Control>f" },
     Shortcut { id: "export-pdf", action: "win.export-pdf", title: "Export as PDF", default: "<Control>e" },
     Shortcut { id: "export-png", action: "win.export-png", title: "Export as PNG", default: "<Shift><Control>e" },
     Shortcut { id: "settings", action: "win.settings", title: "Settings", default: "<Control>comma" },

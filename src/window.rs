@@ -14,8 +14,9 @@ const RENDER_DELAY: Duration = Duration::from_millis(50);
 
 pub struct Window {
     window: adw::ApplicationWindow,
-    title: adw::WindowTitle,
     tabs: adw::TabView,
+    search: gtk::SearchBar,
+    search_entry: gtk::SearchEntry,
     modes: adw::ToggleGroup,
     toasts: adw::ToastOverlay,
     settings: Rc<RefCell<Settings>>,
@@ -34,23 +35,26 @@ impl Window {
         }
         modes.set_active_name(Some(&settings.borrow().mode));
 
-        let title = adw::WindowTitle::new("", "");
         let header = adw::HeaderBar::new();
-        header.set_title_widget(Some(&title));
         header.pack_end(&gtk::MenuButton::builder().icon_name("open-menu-symbolic").menu_model(&main_menu()).primary(true).build());
         header.pack_end(&modes);
 
         let tabs = adw::TabView::new();
         let tab_bar = adw::TabBar::builder().view(&tabs).autohide(false).build();
+        let search_entry = gtk::SearchEntry::builder().hexpand(true).build();
+        let search = gtk::SearchBar::builder().child(&search_entry).show_close_button(true).build();
+        search.connect_entry(&search_entry);
         let toasts = adw::ToastOverlay::new();
         toasts.set_child(Some(&tabs));
         let content = adw::ToolbarView::new();
         content.add_top_bar(&header);
         content.add_top_bar(&tab_bar);
+        content.add_top_bar(&search);
         content.set_content(Some(&toasts));
 
         let window = adw::ApplicationWindow::builder()
             .application(app)
+            .title("downmark")
             .default_width(settings.borrow().width)
             .default_height(settings.borrow().height)
             .maximized(settings.borrow().maximized)
@@ -59,8 +63,9 @@ impl Window {
 
         let win = Rc::new(Window {
             window,
-            title,
             tabs,
+            search,
+            search_entry,
             modes,
             toasts,
             settings: settings.clone(),
@@ -112,6 +117,41 @@ impl Window {
         self.doc_action("save-as", |doc| doc.save_as(|_| {}));
         self.doc_action("export-pdf", |doc| doc.choose_export("pdf"));
         self.doc_action("export-png", |doc| doc.choose_export("png"));
+        self.action("find", None, |win, _| {
+            win.search.set_search_mode(true);
+            win.search_entry.grab_focus();
+        });
+
+        let weak = Rc::downgrade(self);
+        self.search_entry.connect_search_changed(move |entry| {
+            if let Some(doc) = weak.upgrade().and_then(|win| win.current()) {
+                doc.find(&entry.text(), Find::Changed);
+            }
+        });
+        for (signal, step) in [("activate", Find::Next), ("next-match", Find::Next), ("previous-match", Find::Previous)] {
+            let weak = Rc::downgrade(self);
+            self.search_entry.connect_local(signal, false, move |values| {
+                let entry = values[0].get::<gtk::SearchEntry>().ok()?;
+                if let Some(doc) = weak.upgrade().and_then(|win| win.current()) {
+                    doc.find(&entry.text(), step);
+                }
+                None
+            });
+        }
+        let weak = Rc::downgrade(self);
+        self.search.connect_search_mode_enabled_notify(move |search| {
+            if search.is_search_mode() {
+                return;
+            }
+            if let Some(win) = weak.upgrade() {
+                for doc in win.docs.borrow().iter() {
+                    doc.find("", Find::Changed);
+                }
+                if let Some(doc) = win.current() {
+                    doc.focus();
+                }
+            }
+        });
 
         let weak = Rc::downgrade(self);
         self.modes.connect_active_name_notify(move |modes| {
@@ -134,8 +174,8 @@ impl Window {
 
         let weak = Rc::downgrade(self);
         self.tabs.connect_selected_page_notify(move |_| {
-            if let Some(doc) = weak.upgrade().and_then(|win| win.current()) {
-                doc.update_title();
+            if let Some(win) = weak.upgrade() {
+                win.search.set_search_mode(false);
             }
         });
 
@@ -267,14 +307,21 @@ impl Window {
     }
 }
 
+#[derive(Clone, Copy)]
+enum Find {
+    Changed,
+    Next,
+    Previous,
+}
+
 pub struct Doc {
     window: adw::ApplicationWindow,
-    title: adw::WindowTitle,
     toasts: adw::ToastOverlay,
     page: adw::TabPage,
     editor: gtk::ScrolledWindow,
     view: sourceview5::View,
     buffer: sourceview5::Buffer,
+    search: sourceview5::SearchContext,
     preview: webkit6::WebView,
     file: RefCell<Option<gio::File>>,
     pending: RefCell<Option<glib::SourceId>>,
@@ -293,6 +340,9 @@ impl Doc {
         view.set_wrap_mode(gtk::WrapMode::WordChar);
         view.set_top_margin(render::TOP_MARGIN);
         view.set_left_margin(8);
+        let search_settings = sourceview5::SearchSettings::new();
+        search_settings.set_wrap_around(true);
+        let search = sourceview5::SearchContext::new(&buffer, Some(&search_settings));
         let editor = gtk::ScrolledWindow::builder().child(&view).build();
 
         let preview = webkit6::WebView::new();
@@ -312,12 +362,12 @@ impl Doc {
 
         let doc = Rc::new(Doc {
             window: win.window.clone(),
-            title: win.title.clone(),
             toasts: win.toasts.clone(),
             page,
             editor,
             view,
             buffer,
+            search,
             preview,
             file: RefCell::default(),
             pending: RefCell::default(),
@@ -376,13 +426,38 @@ impl Doc {
     fn update_title(&self) {
         let title = title(self.file_name().as_deref(), self.buffer.is_modified());
         self.page.set_title(&title);
-        if !self.page.is_selected() {
+    }
+
+    fn find(&self, text: &str, step: Find) {
+        let finder = self.preview.find_controller();
+        if text.is_empty() {
+            self.search.settings().set_search_text(None);
+            if let Some(finder) = finder {
+                finder.search_finish();
+            }
             return;
         }
-        let dir = self.file.borrow().as_ref().and_then(|f| f.parent()).and_then(|p| p.path());
-        self.title.set_title(&title);
-        self.title.set_subtitle(&dir.map(|d| display_dir(&d, &glib::home_dir())).unwrap_or_default());
-        self.window.set_title(Some(&title));
+        self.search.settings().set_search_text(Some(text));
+        let (start, end) = self.buffer.selection_bounds().unwrap_or_else(|| {
+            let cursor = self.buffer.iter_at_mark(&self.buffer.get_insert());
+            (cursor, cursor)
+        });
+        let found = match step {
+            Find::Changed => self.search.forward(&start),
+            Find::Next => self.search.forward(&end),
+            Find::Previous => self.search.backward(&start),
+        };
+        if let Some((start, end, _)) = found {
+            self.buffer.select_range(&start, &end);
+            self.view.scroll_to_mark(&self.buffer.get_insert(), 0.1, false, 0.0, 0.0);
+        }
+        if let Some(finder) = finder {
+            match step {
+                Find::Changed => finder.search(text, (webkit6::FindOptions::CASE_INSENSITIVE | webkit6::FindOptions::WRAP_AROUND).bits(), u32::MAX),
+                Find::Next => finder.search_next(),
+                Find::Previous => finder.search_previous(),
+            }
+        }
     }
 
     fn toast(&self, message: &str) {
@@ -618,14 +693,6 @@ pub fn export_name(name: Option<&str>, ext: &str) -> String {
     format!("{stem}.{ext}")
 }
 
-pub fn display_dir(dir: &std::path::Path, home: &std::path::Path) -> String {
-    match dir.strip_prefix(home) {
-        Ok(rest) if rest.as_os_str().is_empty() => "~".to_string(),
-        Ok(rest) => format!("~/{}", rest.display()),
-        Err(_) => dir.display().to_string(),
-    }
-}
-
 pub fn title(name: Option<&str>, modified: bool) -> String {
     let name = name.unwrap_or("Untitled");
     if modified { format!("• {name}") } else { name.to_string() }
@@ -675,15 +742,6 @@ mod tests {
     fn export_name_without_file() {
         assert_eq!(export_name(None, "pdf"), "Untitled.pdf");
         assert_eq!(export_name(Some("NOTES"), "png"), "NOTES.png");
-    }
-
-    #[test]
-    fn display_dir_shortens_home() {
-        let home = std::path::Path::new("/home/user");
-        assert_eq!(display_dir(std::path::Path::new("/home/user/notes"), home), "~/notes");
-        assert_eq!(display_dir(std::path::Path::new("/home/user"), home), "~");
-        assert_eq!(display_dir(std::path::Path::new("/home/username"), home), "/home/username");
-        assert_eq!(display_dir(std::path::Path::new("/etc"), home), "/etc");
     }
 
     #[test]

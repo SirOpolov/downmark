@@ -78,6 +78,7 @@ make && sudo make install
 | Save as | `Shift+Ctrl+S` |
 | Close tab | `Ctrl+W` |
 | Editor / Split / Preview | `Ctrl+1` / `Ctrl+2` / `Ctrl+3` |
+| Find | `Ctrl+F`, next `Enter` / `Ctrl+G`, previous `Shift+Ctrl+G` |
 | Export as PDF | `Ctrl+E` |
 | Export as PNG | `Shift+Ctrl+E` |
 | Settings | `Ctrl+,` |
