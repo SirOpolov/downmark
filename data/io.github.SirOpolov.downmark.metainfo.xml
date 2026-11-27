@@ -35,6 +35,11 @@
     <binary>downmark</binary>
   </provides>
   <releases>
+    <release version="0.2.6" date="2026-11-27">
+      <description>
+        <p>Find text in the editor and preview with Ctrl+F.</p>
+      </description>
+    </release>
     <release version="0.2.5" date="2026-11-20">
       <description>
         <p>The window remembers the editor, split or preview view.</p>
